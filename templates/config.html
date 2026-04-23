@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Config Editor{% endblock %}
+{% block heading %}nginx.conf Editor{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+    <p class="text-sm text-gray-400">Edit and save your nginx main configuration</p>
+    <div class="flex items-center gap-3">
+        <button onclick="resetConfig()"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-300 text-sm transition-colors">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+        </button>
+        <button onclick="saveConfig()"
+            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+            <i class="fa-solid fa-floppy-disk"></i> Save
+        </button>
+    </div>
+</div>
+
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <!-- Editor toolbar -->
+    <div class="flex items-center justify-between px-4 py-2.5 border-b border-gray-800 bg-gray-800/50">
+        <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
+            <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
+            <span class="text-xs text-gray-500 ml-2 font-mono">nginx.conf</span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span id="char-count">0 chars</span>
+            <span class="text-gray-700">|</span>
+            <button onclick="formatConfig()" class="hover:text-gray-300 transition-colors">
+                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Format
+            </button>
+        </div>
+    </div>
+
+    <!-- Editor area with line numbers -->
+    <div class="flex" style="min-height: 560px; max-height: 70vh;">
+        <div id="line-numbers"
+            class="select-none text-right text-xs font-mono text-gray-600 bg-gray-900 px-3 py-4 border-r border-gray-800 leading-6 overflow-hidden"
+            style="min-width: 48px; padding-top: 16px;">
+        </div>
+        <textarea id="config-editor" spellcheck="false"
+            class="flex-1 bg-gray-900 text-gray-200 font-mono text-sm leading-6 p-4 outline-none resize-none overflow-auto"
+            style="min-height: 560px;" oninput="onEditorInput(this)" onscroll="syncScroll(this)">{{ config }}</textarea>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const originalConfig = document.getElementById('config-editor').value;
+
+    function onEditorInput(el) {
+        updateLineNumbers(el.value);
+        document.getElementById('char-count').textContent = el.value.length + ' chars';
+    }
+
+    function updateLineNumbers(text) {
+        const lines = text.split('\n').length;
+        const nums = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
+        document.getElementById('line-numbers').textContent = nums;
+    }
+
+    function syncScroll(el) {
+        document.getElementById('line-numbers').scrollTop = el.scrollTop;
+    }
+
+    async function saveConfig() {
+        const config = document.getElementById('config-editor').value;
+        const res = await fetch('/api/config/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ config })
+        });
+        const data = await res.json();
+        showToast(data.message, 'success');
+    }
+
+    function resetConfig() {
+        document.getElementById('config-editor').value = originalConfig;
+        onEditorInput(document.getElementById('config-editor'));
+        showToast('Config reset to last saved', 'info');
+    }
+
+    function formatConfig() {
+        showToast('Format is a demo feature only', 'info');
+    }
+
+    // Init
+    onEditorInput(document.getElementById('config-editor'));
+</script>
+{% endblock %}

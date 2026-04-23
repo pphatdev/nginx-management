@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Virtual Hosts{% endblock %}
+{% block heading %}Virtual Hosts{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+    <p class="text-sm text-gray-400">{{ servers | length }} server blocks configured</p>
+    <button onclick="openAddModal()"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+        <i class="fa-solid fa-plus"></i> Add Host
+    </button>
+</div>
+
+<!-- Table -->
+<div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+    <table class="w-full text-sm" id="server-table">
+        <thead class="border-b border-gray-800">
+            <tr class="text-left text-xs text-gray-500 uppercase tracking-wider">
+                <th class="px-5 py-3 font-medium">Domain</th>
+                <th class="px-5 py-3 font-medium">Port</th>
+                <th class="px-5 py-3 font-medium">SSL</th>
+                <th class="px-5 py-3 font-medium">Upstream</th>
+                <th class="px-5 py-3 font-medium">Status</th>
+                <th class="px-5 py-3 font-medium text-right">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-800">
+            {% for s in servers %}
+            <tr id="row-{{ s.id }}" class="hover:bg-gray-800/40 transition-colors">
+                <td class="px-5 py-3.5 font-mono text-gray-200">{{ s.name }}</td>
+                <td class="px-5 py-3.5 text-gray-400">{{ s.port }}</td>
+                <td class="px-5 py-3.5">
+                    {% if s.ssl %}
+                    <span
+                        class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
+                        <i class="fa-solid fa-lock text-[10px]"></i> Yes
+                    </span>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">
+                        <i class="fa-solid fa-lock-open text-[10px]"></i> No
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3.5 font-mono text-gray-400 text-xs">{{ s.upstream }}</td>
+                <td class="px-5 py-3.5" id="status-{{ s.id }}">
+                    {% if s.status == 'active' %}
+                    <span
+                        class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active
+                    </span>
+                    {% else %}
+                    <span
+                        class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-400">
+                        <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Inactive
+                    </span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3.5 text-right">
+                    <div class="flex items-center justify-end gap-2">
+                        <button onclick="toggleServer({{ s.id }})"
+                            class="text-xs px-3 py-1.5 rounded-md border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white transition-colors">
+                            Toggle
+                        </button>
+                        <button
+                            class="text-xs px-3 py-1.5 rounded-md border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white transition-colors">
+                            Edit
+                        </button>
+                        <button
+                            class="text-xs px-3 py-1.5 rounded-md border border-red-900 hover:border-red-600 text-red-400 hover:text-red-300 transition-colors">
+                            Delete
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Add Host Modal -->
+<div id="add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="text-base font-semibold">Add Virtual Host</h2>
+            <button onclick="closeAddModal()" class="text-gray-500 hover:text-gray-300 transition-colors">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <form class="space-y-4" onsubmit="return false">
+            <div>
+                <label class="block text-xs text-gray-400 mb-1.5">Domain Name</label>
+                <input type="text" placeholder="e.g. app.example.com"
+                    class="w-full bg-gray-800 border border-gray-700 focus:border-brand-500 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1.5">Port</label>
+                    <input type="number" value="80"
+                        class="w-full bg-gray-800 border border-gray-700 focus:border-brand-500 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors" />
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1.5">SSL</label>
+                    <select
+                        class="w-full bg-gray-800 border border-gray-700 focus:border-brand-500 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors">
+                        <option value="false">No</option>
+                        <option value="true">Yes</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <label class="block text-xs text-gray-400 mb-1.5">Upstream Pool</label>
+                <input type="text" placeholder="e.g. api_pool"
+                    class="w-full bg-gray-800 border border-gray-700 focus:border-brand-500 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors" />
+            </div>
+            <div class="pt-2 flex justify-end gap-3">
+                <button type="button" onclick="closeAddModal()"
+                    class="px-4 py-2 rounded-lg text-sm border border-gray-700 hover:border-gray-500 text-gray-300 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" onclick="closeAddModal(); showToast('Host added (demo only)', 'success')"
+                    class="px-4 py-2 rounded-lg text-sm bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors">
+                    Add Host
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openAddModal() { document.getElementById('add-modal').classList.remove('hidden'); }
+    function closeAddModal() { document.getElementById('add-modal').classList.add('hidden'); }
+
+    async function toggleServer(id) {
+        const res = await fetch(`/api/servers/${id}/toggle`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.ok) return;
+
+        const cell = document.getElementById(`status-${id}`);
+        if (data.status === 'active') {
+            cell.innerHTML = `<span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Active</span>`;
+        } else {
+            cell.innerHTML = `<span class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-gray-700 text-gray-400">
+        <span class="w-1.5 h-1.5 rounded-full bg-gray-500"></span> Inactive</span>`;
+        }
+        showToast(`Server ${data.status === 'active' ? 'enabled' : 'disabled'}`, 'success');
+    }
+</script>
+{% endblock %}

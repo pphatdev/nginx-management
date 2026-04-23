@@ -1,0 +1,71 @@
+/* ── Navigation links ────────────────────────── */
+.nav-link {
+    color: #9ca3af;
+    /* gray-400 */
+}
+
+.nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #f9fafb;
+}
+
+.nav-link.active {
+    background-color: rgba(0, 150, 57, 0.15);
+    color: #4ade80;
+}
+
+.nav-link.active i {
+    color: #009639;
+}
+
+/* ── Stat card hover ─────────────────────────── */
+.stat-card {
+    transition: border-color 0.15s, transform 0.15s;
+}
+
+.stat-card:hover {
+    border-color: #374151;
+    transform: translateY(-1px);
+}
+
+/* ── Scrollbar ──────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #374151;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #4b5563;
+}
+
+/* ── Config editor textarea ──────────────────── */
+#config-editor {
+    tab-size: 4;
+    caret-color: #4ade80;
+}
+
+/* ── Toast animation ─────────────────────────── */
+@keyframes slideUp {
+    from {
+        transform: translateY(16px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+#toast.show {
+    animation: slideUp 0.2s ease forwards;
+}
