@@ -80,6 +80,30 @@
                 <dd class="text-gray-200">{{ stats.bytes_out }}</dd>
             </div>
             <div class="flex justify-between">
+                <dt class="text-gray-400">Hostname</dt>
+                <dd class="text-gray-200">{{ stats.machine_name }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-400">OS</dt>
+                <dd class="text-gray-200">{{ stats.machine_platform }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-400">System Uptime</dt>
+                <dd class="text-gray-200">{{ stats.machine_uptime }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-400">Load Average</dt>
+                <dd class="text-gray-200">{{ stats.load_average }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-400">Memory</dt>
+                <dd class="text-gray-200">{{ stats.memory_usage }}</dd>
+            </div>
+            <div class="flex justify-between">
+                <dt class="text-gray-400">Disk</dt>
+                <dd class="text-gray-200">{{ stats.disk_usage }}</dd>
+            </div>
+            <div class="flex justify-between">
                 <dt class="text-gray-400">Last Reload</dt>
                 <dd id="info-last-reload" class="text-gray-200 text-xs">{{ stats.last_reload }}</dd>
             </div>

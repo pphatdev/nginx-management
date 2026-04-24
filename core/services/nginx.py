@@ -6,6 +6,8 @@ Falls back gracefully when nginx is not installed (development mode).
 """
 import datetime
 import os
+import platform
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -162,6 +164,78 @@ def write_config(content: str) -> tuple[bool, str]:
         return False, "Permission denied — set NGINX_USE_SUDO=true and install the sudoers drop-in"
 
 
+def _format_bytes(value: int) -> str:
+    """Format a byte count into a human-friendly string."""
+    units = ["B", "KB", "MB", "GB", "TB"]
+    size = float(value)
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.1f} {unit}"
+        size /= 1024
+    return f"{size:.1f} TB"
+
+
+def _get_machine_uptime() -> str:
+    """Return host uptime from /proc/uptime on Linux, or N/A otherwise."""
+    uptime_path = Path("/proc/uptime")
+    if uptime_path.exists():
+        try:
+            uptime_seconds = float(uptime_path.read_text().split()[0])
+            return str(datetime.timedelta(seconds=int(uptime_seconds)))
+        except (ValueError, OSError):
+            pass
+    return "N/A"
+
+
+def _read_meminfo() -> dict[str, int] | None:
+    try:
+        raw = Path("/proc/meminfo").read_text()
+    except OSError:
+        return None
+
+    details: dict[str, int] = {}
+    for line in raw.splitlines():
+        parts = line.split()
+        if len(parts) < 2 or not parts[0].endswith(":"):
+            continue
+        key = parts[0][:-1]
+        try:
+            details[key] = int(parts[1]) * 1024
+        except ValueError:
+            continue
+    return details
+
+
+def _get_memory_usage() -> str:
+    mem = _read_meminfo()
+    if mem and "MemTotal" in mem and "MemAvailable" in mem:
+        total = mem["MemTotal"]
+        available = mem["MemAvailable"]
+        used = total - available
+        percent = int(round(used * 100 / total)) if total else 0
+        return f"{_format_bytes(used)} / {_format_bytes(total)} ({percent}%)"
+    return "N/A"
+
+
+def _get_disk_usage(path: str = "/") -> str:
+    try:
+        usage = shutil.disk_usage(path)
+        percent = int(round(usage.used * 100 / usage.total)) if usage.total else 0
+        return f"{_format_bytes(usage.used)} / {_format_bytes(usage.total)} ({percent}%)"
+    except OSError:
+        return "N/A"
+
+
+def _get_load_average() -> str:
+    if hasattr(os, "getloadavg"):
+        try:
+            one, five, fifteen = os.getloadavg()
+            return f"{one:.2f}, {five:.2f}, {fifteen:.2f}"
+        except OSError:
+            pass
+    return "N/A"
+
+
 def get_stats() -> dict:
     """
     Return a stats dict for the dashboard.
@@ -171,6 +245,12 @@ def get_stats() -> dict:
     return {
         "nginx_version": get_version(),
         "running": is_running(),
+        "machine_name": platform.node(),
+        "machine_platform": f"{platform.system()} {platform.release()}",
+        "machine_uptime": _get_machine_uptime(),
+        "load_average": _get_load_average(),
+        "memory_usage": _get_memory_usage(),
+        "disk_usage": _get_disk_usage(),
         "uptime": "N/A",
         "active_connections": 0,
         "requests_per_sec": 0,

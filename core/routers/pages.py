@@ -56,3 +56,36 @@ async def config_page(request: Request):
         "page": "config",
         "config": nginx.read_config(),
     })
+
+
+@router.get("/deployments", response_class=HTMLResponse)
+async def deployments_page(request: Request):
+    return templates.TemplateResponse("deployments.html", {
+        "request": request,
+        "page": "deployments",
+    })
+
+
+@router.get("/dns", response_class=HTMLResponse)
+async def dns_page(request: Request):
+    return templates.TemplateResponse("dns.html", {
+        "request": request,
+        "page": "dns",
+    })
+
+
+@router.get("/monitoring", response_class=HTMLResponse)
+async def monitoring_page(request: Request):
+    return templates.TemplateResponse("monitoring.html", {
+        "request": request,
+        "page": "monitoring",
+    })
+
+
+@router.get("/loadbalancing", response_class=HTMLResponse)
+async def loadbalancing_page(request: Request):
+    return templates.TemplateResponse("loadbalancing.html", {
+        "request": request,
+        "page": "loadbalancing",
+    })
+

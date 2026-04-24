@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}Load Balancing{% endblock %}
+{% block heading %}Load Balancing{% endblock %}
+{% block content %}
+
+<!-- ── Header ─────────────────────────────── -->
+<div class="mb-6">
+    <p class="text-gray-400 text-sm">Configure and monitor load balancing for your deployments.</p>
+</div>
+
+<!-- ── Deployment Selector ─────────────────── -->
+<div class="mb-6 flex gap-2 items-center">
+    <label class="text-sm font-medium text-gray-300">Select Deployment:</label>
+    <select id="lb-deployment-selector" onchange="loadLoadBalancerConfig()" class="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+        <option value="">Choose a deployment...</option>
+    </select>
+</div>
+
+<!-- ── LB Configuration ────────────────────── -->
+<div id="lb-config-container" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    
+    <!-- Settings -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-blue-400"></i> Configuration
+        </h3>
+        <form id="lb-settings-form" onsubmit="handleLBSettingsUpdate(event)" class="space-y-4">
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1 uppercase">Algorithm</label>
+                <select id="lb-algorithm" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:border-brand-500 focus:outline-none">
+                    <option value="round_robin">Round Robin</option>
+                    <option value="least_conn">Least Connections</option>
+                    <option value="ip_hash">IP Hash</option>
+                    <option value="weighted">Weighted</option>
+                </select>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <label class="text-xs font-medium text-gray-400 uppercase">Session Persistence</label>
+                <input type="checkbox" id="lb-session-persistence" class="w-4 h-4">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1 uppercase">Session Timeout</label>
+                <input type="number" id="lb-session-timeout" value="3600" min="60" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div class="flex items-center justify-between">
+                <label class="text-xs font-medium text-gray-400 uppercase">Health Checks</label>
+                <input type="checkbox" id="lb-health-check" checked class="w-4 h-4">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1 uppercase">Check Interval (s)</label>
+                <input type="number" id="lb-check-interval" value="10" min="5" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-gray-400 mb-1 uppercase">Health Path</label>
+                <input type="text" id="lb-health-path" value="/" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <button type="submit" class="w-full px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium rounded-lg transition-colors">
+                Save Settings
+            </button>
+        </form>
+    </div>
+
+    <!-- Rules -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 col-span-2">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-code-branch text-purple-400"></i> Load Balancing Rules
+            </h3>
+            <button onclick="openRuleModal()" class="text-xs px-2 py-1 rounded bg-brand-500 hover:bg-brand-600 text-white transition-colors">
+                New Rule
+            </button>
+        </div>
+        <div id="rules-list" class="space-y-2 max-h-96 overflow-y-auto">
+            <p class="text-gray-400 text-sm text-center py-4">No rules configured</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── Backend Instances ──────────────────── -->
+<div id="instances-container" class="hidden bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <h3 class="text-sm font-semibold mb-4 flex items-center gap-2">
+        <i class="fa-solid fa-server text-green-400"></i> Backend Instances
+    </h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                    <th class="pb-3 font-medium">Address</th>
+                    <th class="pb-3 font-medium">Port</th>
+                    <th class="pb-3 font-medium">Weight</th>
+                    <th class="pb-3 font-medium">Status</th>
+                    <th class="pb-3 font-medium">Active Connections</th>
+                    <th class="pb-3 font-medium">Total Requests</th>
+                </tr>
+            </thead>
+            <tbody id="instances-tbody" class="divide-y divide-gray-800">
+                <tr class="text-gray-400 text-center">
+                    <td colspan="6" class="py-8">No instances</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── Performance Metrics ─────────────────── -->
+<div id="performance-container" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-gray-400 font-medium">Total Requests</span>
+        <p id="perf-total-requests" class="text-2xl font-bold mt-1">0</p>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-gray-400 font-medium">Requests/sec</span>
+        <p id="perf-rps" class="text-2xl font-bold mt-1">0</p>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-gray-400 font-medium">Active Connections</span>
+        <p id="perf-active-connections" class="text-2xl font-bold mt-1">0</p>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-gray-400 font-medium">Avg Response Time</span>
+        <p id="perf-avg-response" class="text-2xl font-bold mt-1">0ms</p>
+    </div>
+</div>
+
+<!-- ── Rule Modal ─────────────────────────── -->
+<div id="rule-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">New Rule</h2>
+            <button onclick="closeRuleModal()" class="text-gray-400 hover:text-gray-300">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form id="rule-form" onsubmit="handleRuleSubmit(event)" class="px-6 py-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Rule Name</label>
+                <input type="text" id="rule-name" placeholder="e.g., API Route" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Path Pattern</label>
+                <input type="text" id="rule-path" placeholder="/api/*" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">HTTP Method</label>
+                <select id="rule-method" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                    <option value="">All Methods</option>
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Upstream Target</label>
+                <input type="text" id="rule-upstream" placeholder="backend_pool" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div class="flex gap-2 pt-4 border-t border-gray-800">
+                <button type="button" onclick="closeRuleModal()" class="flex-1 px-4 py-2 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors">
+                    Create
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentLBDeploymentId = null;
+
+function openRuleModal() {
+    if (!currentLBDeploymentId) {
+        showToast('Please select a deployment first', 'error');
+        return;
+    }
+    document.getElementById('rule-form').reset();
+    document.getElementById('rule-modal').classList.remove('hidden');
+}
+
+function closeRuleModal() {
+    document.getElementById('rule-modal').classList.add('hidden');
+}
+
+async function loadLBDeployments() {
+    try {
+        const res = await fetch('/api/deployments');
+        const deployments = await res.json();
+        
+        const selector = document.getElementById('lb-deployment-selector');
+        selector.innerHTML = '<option value="">Choose a deployment...</option>' +
+            deployments.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    } catch (err) {
+        showToast('Failed to load deployments', 'error');
+    }
+}
+
+async function loadLoadBalancerConfig() {
+    const deploymentId = document.getElementById('lb-deployment-selector').value;
+    if (!deploymentId) {
+        document.getElementById('lb-config-container').classList.add('hidden');
+        document.getElementById('instances-container').classList.add('hidden');
+        document.getElementById('performance-container').classList.add('hidden');
+        return;
+    }
+
+    currentLBDeploymentId = deploymentId;
+    document.getElementById('lb-config-container').classList.remove('hidden');
+    document.getElementById('instances-container').classList.remove('hidden');
+    document.getElementById('performance-container').classList.remove('hidden');
+
+    try {
+        // Load LB config
+        const configRes = await fetch(`/api/loadbalancer/config/${deploymentId}`);
+        const config = await configRes.json();
+
+        document.getElementById('lb-algorithm').value = config.algorithm;
+        document.getElementById('lb-session-persistence').checked = config.session_persistence;
+        document.getElementById('lb-session-timeout').value = config.session_timeout;
+        document.getElementById('lb-health-check').checked = config.health_check_enabled;
+        document.getElementById('lb-check-interval').value = config.health_check_interval;
+        document.getElementById('lb-health-path').value = config.health_check_path;
+
+        // Load rules
+        loadRules(deploymentId);
+
+        // Load metrics
+        loadLBMetrics(deploymentId);
+    } catch (err) {
+        showToast('Failed to load load balancer config', 'error');
+    }
+}
+
+async function loadRules(deploymentId) {
+    try {
+        const res = await fetch(`/api/loadbalancer/rules?deployment_id=${deploymentId}`);
+        const rules = await res.json();
+
+        const rulesList = document.getElementById('rules-list');
+        if (rules.length === 0) {
+            rulesList.innerHTML = '<p class="text-gray-400 text-sm text-center py-4">No rules configured</p>';
+            return;
+        }
+
+        rulesList.innerHTML = rules.map(r => `
+            <div class="bg-gray-800 rounded p-3 flex items-center justify-between">
+                <div class="text-sm flex-1">
+                    <p class="text-gray-300 font-medium">${r.name}</p>
+                    <p class="text-xs text-gray-500">${r.condition.path || 'All paths'} → ${r.action.upstream}</p>
+                </div>
+                <button onclick="deleteRule(${r.id})" class="text-red-400 hover:text-red-300 ml-4">
+                    <i class="fa-solid fa-trash text-xs"></i>
+                </button>
+            </div>
+        `).join('');
+    } catch (err) {
+        console.error('Failed to load rules', err);
+    }
+}
+
+async function loadLBMetrics(deploymentId) {
+    try {
+        const res = await fetch(`/api/loadbalancer/metrics/${deploymentId}`);
+        const metrics = await res.json();
+
+        document.getElementById('perf-total-requests').textContent = metrics.total_requests;
+        document.getElementById('perf-rps').textContent = metrics.requests_per_sec.toFixed(2);
+        document.getElementById('perf-active-connections').textContent = metrics.active_connections;
+        document.getElementById('perf-avg-response').textContent = Math.round(metrics.average_response_time_ms) + 'ms';
+
+        // Load instances
+        const tbody = document.getElementById('instances-tbody');
+        if (metrics.instances.length === 0) {
+            tbody.innerHTML = '<tr class="text-gray-400 text-center"><td colspan="6" class="py-8">No instances</td></tr>';
+            return;
+        }
+
+        function getStatusColor(status) {
+            const colors = {
+                up: 'text-emerald-400',
+                down: 'text-red-400',
+                draining: 'text-yellow-400'
+            };
+            return colors[status] || 'text-gray-400';
+        }
+
+        tbody.innerHTML = metrics.instances.map(i => `
+            <tr class="hover:bg-gray-800/50">
+                <td class="py-3 font-mono">${i.address}</td>
+                <td class="py-3">${i.port}</td>
+                <td class="py-3">${i.weight}</td>
+                <td class="py-3"><span class="${getStatusColor(i.status)}">${i.status}</span></td>
+                <td class="py-3">${i.active_connections}</td>
+                <td class="py-3">${i.total_requests}</td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        showToast('Failed to load metrics', 'error');
+    }
+}
+
+async function handleLBSettingsUpdate(e) {
+    e.preventDefault();
+
+    const data = {
+        deployment_id: parseInt(currentLBDeploymentId),
+        algorithm: document.getElementById('lb-algorithm').value,
+        session_persistence: document.getElementById('lb-session-persistence').checked,
+        session_timeout: parseInt(document.getElementById('lb-session-timeout').value),
+        health_check_enabled: document.getElementById('lb-health-check').checked,
+        health_check_interval: parseInt(document.getElementById('lb-check-interval').value),
+        health_check_path: document.getElementById('lb-health-path').value
+    };
+
+    try {
+        const res = await fetch(`/api/loadbalancer/config/${currentLBDeploymentId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            showToast('Settings updated successfully');
+        } else {
+            showToast('Failed to update settings', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function handleRuleSubmit(e) {
+    e.preventDefault();
+
+    const data = {
+        name: document.getElementById('rule-name').value,
+        condition: {
+            path: document.getElementById('rule-path').value || null,
+            method: document.getElementById('rule-method').value || null
+        },
+        action: {
+            upstream: document.getElementById('rule-upstream').value
+        }
+    };
+
+    try {
+        const res = await fetch(`/api/loadbalancer/rules?deployment_id=${currentLBDeploymentId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            showToast('Rule created successfully');
+            closeRuleModal();
+            loadRules(currentLBDeploymentId);
+        } else {
+            showToast('Failed to create rule', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function deleteRule(id) {
+    if (!confirm('Delete this rule?')) return;
+
+    try {
+        const res = await fetch(`/api/loadbalancer/rules/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Rule deleted');
+            loadRules(currentLBDeploymentId);
+        }
+    } catch (err) {
+        showToast('Failed to delete rule', 'error');
+    }
+}
+
+// Load deployments on init
+loadLBDeployments();
+</script>
+{% endblock %}

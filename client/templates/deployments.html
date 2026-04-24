@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+{% block title %}Deployments{% endblock %}
+{% block heading %}Project Deployments{% endblock %}
+{% block content %}
+
+<!-- ── Header & Actions ─────────────────────── -->
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <p class="text-gray-400 text-sm">Manage, create, update, and delete deployments here.</p>
+    </div>
+    <button onclick="openDeploymentModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium transition-colors">
+        <i class="fa-solid fa-plus"></i> New Deployment
+    </button>
+</div>
+
+<!-- ── Deployments Table ──────────────────────── -->
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-xs text-gray-500 uppercase tracking-wider border-b border-gray-800">
+                    <th class="pb-3 font-medium">Name</th>
+                    <th class="pb-3 font-medium">Type</th>
+                    <th class="pb-3 font-medium">Service</th>
+                    <th class="pb-3 font-medium">Domain</th>
+                    <th class="pb-3 font-medium">Status</th>
+                    <th class="pb-3 font-medium">Created</th>
+                    <th class="pb-3 font-medium text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="deployments-tbody" class="divide-y divide-gray-800">
+                <tr class="text-gray-400 text-center">
+                    <td colspan="7" class="py-8">Loading deployments...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ── Deployment Modal ──────────────────────── -->
+<div id="deployment-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-md w-full">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <h2 id="modal-title" class="text-lg font-semibold">New Deployment</h2>
+            <button onclick="closeDeploymentModal()" class="text-gray-400 hover:text-gray-300">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Form -->
+        <form id="deployment-form" onsubmit="handleDeploymentSubmit(event)" class="px-6 py-4 space-y-4">
+            <input type="hidden" id="deployment-id" value="">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Deployment Name</label>
+                <input type="text" id="deployment-name" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Project Type</label>
+                <select id="deployment-type" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                    <option value="">Select type...</option>
+                    <option value="nextjs">Next.js</option>
+                    <option value="nuxtjs">Nuxt.js</option>
+                    <option value="nodejs">Node.js</option>
+                    <option value="python">Python</option>
+                    <option value="static">Static</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Service Type</label>
+                <select id="deployment-service" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                    <option value="">Select service...</option>
+                    <option value="supervisorctl">Supervisorctl</option>
+                    <option value="systemd">Systemd</option>
+                    <option value="pm2">PM2</option>
+                    <option value="docker">Docker</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Domain</label>
+                <input type="text" id="deployment-domain" placeholder="app.example.com" required class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <!-- Footer -->
+            <div class="flex gap-2 pt-4 border-t border-gray-800">
+                <button type="button" onclick="closeDeploymentModal()" class="flex-1 px-4 py-2 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors">
+                    Save
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Edit Modal ─────────────────────────────── -->
+<div id="edit-deployment-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-2xl w-full">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <h2 class="text-lg font-semibold">Edit Deployment</h2>
+            <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-300">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <!-- Form -->
+        <form id="edit-deployment-form" onsubmit="handleEditSubmit(event)" class="px-6 py-4 space-y-4">
+            <input type="hidden" id="edit-deployment-id" value="">
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Project Type</label>
+                    <select id="edit-deployment-type" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                        <option value="nextjs">Next.js</option>
+                        <option value="nuxtjs">Nuxt.js</option>
+                        <option value="nodejs">Node.js</option>
+                        <option value="python">Python</option>
+                        <option value="static">Static</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">Service Type</label>
+                    <select id="edit-deployment-service" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                        <option value="supervisorctl">Supervisorctl</option>
+                        <option value="systemd">Systemd</option>
+                        <option value="pm2">PM2</option>
+                        <option value="docker">Docker</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Domain</label>
+                <input type="text" id="edit-deployment-domain" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">Status</label>
+                <select id="edit-deployment-status" class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-brand-500 focus:outline-none">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="error">Error</option>
+                </select>
+            </div>
+
+            <!-- Footer -->
+            <div class="flex gap-2 pt-4 border-t border-gray-800">
+                <button type="button" onclick="closeEditModal()" class="flex-1 px-4 py-2 rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button type="submit" class="flex-1 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-medium transition-colors">
+                    Update
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openDeploymentModal() {
+    document.getElementById('deployment-form').reset();
+    document.getElementById('deployment-id').value = '';
+    document.getElementById('modal-title').textContent = 'New Deployment';
+    document.getElementById('deployment-modal').classList.remove('hidden');
+}
+
+function closeDeploymentModal() {
+    document.getElementById('deployment-modal').classList.add('hidden');
+}
+
+function closeEditModal() {
+    document.getElementById('edit-deployment-modal').classList.add('hidden');
+}
+
+async function handleDeploymentSubmit(e) {
+    e.preventDefault();
+    const data = {
+        name: document.getElementById('deployment-name').value,
+        project_type: document.getElementById('deployment-type').value,
+        service_type: document.getElementById('deployment-service').value,
+        domain: document.getElementById('deployment-domain').value,
+        config: { environment_vars: {}, custom_config: {} }
+    };
+
+    try {
+        const res = await fetch('/api/deployments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            showToast('Deployment created successfully');
+            closeDeploymentModal();
+            loadDeployments();
+        } else {
+            showToast('Failed to create deployment', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function handleEditSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-deployment-id').value;
+    const data = {
+        project_type: document.getElementById('edit-deployment-type').value,
+        service_type: document.getElementById('edit-deployment-service').value,
+        domain: document.getElementById('edit-deployment-domain').value,
+        status: document.getElementById('edit-deployment-status').value,
+        config: { environment_vars: {}, custom_config: {} }
+    };
+
+    try {
+        const res = await fetch(`/api/deployments/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            showToast('Deployment updated successfully');
+            closeEditModal();
+            loadDeployments();
+        } else {
+            showToast('Failed to update deployment', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function editDeployment(id) {
+    const res = await fetch(`/api/deployments/${id}`);
+    const data = await res.json();
+
+    document.getElementById('edit-deployment-id').value = data.id;
+    document.getElementById('edit-deployment-type').value = data.project_type;
+    document.getElementById('edit-deployment-service').value = data.service_type;
+    document.getElementById('edit-deployment-domain').value = data.domain;
+    document.getElementById('edit-deployment-status').value = data.status;
+
+    document.getElementById('edit-deployment-modal').classList.remove('hidden');
+}
+
+async function deleteDeployment(id) {
+    if (!confirm('Are you sure you want to delete this deployment?')) return;
+
+    try {
+        const res = await fetch(`/api/deployments/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Deployment deleted successfully');
+            loadDeployments();
+        } else {
+            showToast('Failed to delete deployment', 'error');
+        }
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function getStatusBadge(status) {
+    const colors = {
+        active: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', dot: 'bg-emerald-400' },
+        inactive: { bg: 'bg-gray-500/10', text: 'text-gray-400', dot: 'bg-gray-400' },
+        error: { bg: 'bg-red-500/10', text: 'text-red-400', dot: 'bg-red-400' }
+    };
+    const { bg, text, dot } = colors[status] || colors.inactive;
+    return `<span class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${bg} ${text}">
+        <span class="w-1.5 h-1.5 rounded-full ${dot}"></span> ${status}
+    </span>`;
+}
+
+async function loadDeployments() {
+    try {
+        const res = await fetch('/api/deployments');
+        const deployments = await res.json();
+
+        const tbody = document.getElementById('deployments-tbody');
+        if (deployments.length === 0) {
+            tbody.innerHTML = '<tr class="text-gray-400 text-center"><td colspan="7" class="py-8">No deployments yet. Create one to get started.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = deployments.map(d => `
+            <tr class="hover:bg-gray-800/50 transition-colors">
+                <td class="py-3 font-mono text-gray-200">${d.name}</td>
+                <td class="py-3 text-gray-400">${d.project_type}</td>
+                <td class="py-3 text-gray-400">${d.service_type}</td>
+                <td class="py-3 text-gray-200">${d.domain}</td>
+                <td class="py-3">${getStatusBadge(d.status)}</td>
+                <td class="py-3 text-gray-400 text-xs">${formatDate(d.created_at)}</td>
+                <td class="py-3 text-right">
+                    <button onclick="editDeployment(${d.id})" class="text-blue-400 hover:text-blue-300 mr-3" title="Edit">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button onclick="deleteDeployment(${d.id})" class="text-red-400 hover:text-red-300" title="Delete">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (err) {
+        showToast('Failed to load deployments', 'error');
+    }
+}
+
+// Load on page init
+loadDeployments();
+</script>
+{% endblock %}
