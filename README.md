@@ -28,17 +28,34 @@ A lightweight web-based dashboard for managing Nginx — built with **FastAPI** 
 
 ```
 nginx-management/
-├── app.py              # FastAPI application & API routes
+├── app.py              # FastAPI app factory — mounts static, registers routers
+├── main.py             # Uvicorn entrypoint (python main.py)
 ├── requirements.txt
+├── .env.example
+├── core/
+│   ├── config.py       # Settings via pydantic-settings (reads .env)
+│   ├── models/
+│   │   ├── server.py   # Server Pydantic model
+│   │   └── upstream.py # Upstream / Backend Pydantic models
+│   ├── routers/
+│   │   ├── pages.py    # HTML page routes (/, /servers, /upstreams, /config)
+│   │   └── api.py      # JSON API routes (/api/*)
+│   └── services/
+│       ├── nginx.py    # Nginx subprocess service (reload, test, read/write config)
+│       └── store.py    # In-memory data store (swap for DB when ready)
 ├── templates/
 │   ├── base.html       # Sidebar layout shell
 │   ├── index.html      # Dashboard
 │   ├── servers.html    # Virtual hosts
 │   ├── upstreams.html  # Upstream pools
 │   └── config.html     # Config editor
-└── static/
-    ├── css/style.css
-    └── js/app.js
+├── static/
+│   ├── css/style.css
+│   └── js/app.js
+└── deploy/
+    ├── deploy.sh                 # Install / update script
+    ├── nginx-management.service  # systemd unit file
+    └── nginx-management.conf     # Nginx reverse proxy config
 ```
 
 ---
@@ -70,7 +87,7 @@ pip install -r requirements.txt
 ### Run
 
 ```bash
-python app.py
+python main.py
 ```
 
 Then open [http://localhost:8000](http://localhost:8000) in your browser.
