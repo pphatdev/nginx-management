@@ -4,16 +4,20 @@ After=network.target
 
 [Service]
 Type=simple
-User=pphat
-Group=pphat
-WorkingDirectory=/var/www/nginx-management
-EnvironmentFile=/var/www/nginx-management/.env
-ExecStart=/var/www/nginx-management/.venv/bin/gunicorn app:app \
-    --workers 4 \
+# __APP_USER__ and __APP_DIR__ are substituted by deploy.sh at install time.
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_DIR__
+EnvironmentFile=__APP_DIR__/.env
+# --bind is intentionally fixed: Gunicorn listens on the internal upstream port
+# (127.0.0.1:8000) while Nginx fronts the public port defined by APP_PORT in .env.
+# WORKERS is read from .env (default: 4 if not set).
+ExecStart=/bin/sh -c 'exec __APP_DIR__/.venv/bin/gunicorn app:app \
+    --workers "${WORKERS:-4}" \
     --worker-class uvicorn.workers.UvicornWorker \
     --bind 127.0.0.1:8000 \
     --access-logfile - \
-    --error-logfile -
+    --error-logfile -'
 Restart=always
 RestartSec=5
 

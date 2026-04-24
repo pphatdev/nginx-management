@@ -84,7 +84,11 @@ if [[ ! -f .env ]]; then
 fi
 
 echo "==> Installing systemd service..."
-cp "${SERVICE_FILE}" /etc/systemd/system/
+SERVICE_DEST="/etc/systemd/system/${APP_NAME}.service"
+sed \
+  -e "s|__APP_USER__|${APP_USER}|g" \
+  -e "s|__APP_DIR__|${APP_DIR}|g" \
+  "${SERVICE_FILE}" > "${SERVICE_DEST}"
 systemctl daemon-reload
 systemctl enable "${APP_NAME}"
 systemctl start "${APP_NAME}"
