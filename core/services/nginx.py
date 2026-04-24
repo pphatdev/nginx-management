@@ -41,11 +41,12 @@ http {
 """
 
 
-def _run(cmd: list[str]) -> tuple[bool, str]:
+def _run(cmd: list[str], stdin: str | None = None) -> tuple[bool, str]:
     """Run a subprocess command. Returns (success, combined output)."""
     try:
         result = subprocess.run(
             cmd,
+            input=stdin,
             capture_output=True,
             text=True,
             timeout=10,
@@ -56,6 +57,13 @@ def _run(cmd: list[str]) -> tuple[bool, str]:
         return False, f"Command not found: {cmd[0]}"
     except subprocess.TimeoutExpired:
         return False, "Command timed out"
+
+
+def _sudo(cmd: list[str]) -> list[str]:
+    """Prepend 'sudo --non-interactive' when nginx_use_sudo is enabled."""
+    if settings.nginx_use_sudo:
+        return ["sudo", "--non-interactive"] + cmd
+    return cmd
 
 
 def is_running() -> bool:
@@ -82,7 +90,7 @@ def get_version() -> str:
 
 def test_config() -> tuple[bool, str]:
     """Run `nginx -t` to validate the active config."""
-    return _run([settings.nginx_binary, "-t"])
+    return _run(_sudo([settings.nginx_binary, "-t"]))
 
 
 def reload() -> tuple[bool, str]:
@@ -105,11 +113,40 @@ def write_config(content: str) -> tuple[bool, str]:
     """
     Write new config content to disk and validate with `nginx -t`.
     Automatically rolls back to the previous config if validation fails.
+
+    In production (nginx_use_sudo=True) the write is done via `sudo tee` so
+    the unprivileged service account does not need direct write access to
+    nginx.conf.  The sudoers drop-in (deploy/nginx-management-sudoers) grants
+    only the minimum commands required.
+
     Returns (success, message).
     """
     path = Path(settings.nginx_config_path)
     if not path.exists():
         return True, "Config saved (dev mode — no file written)"
+
+    if settings.nginx_use_sudo:
+        # Read backup (nginx.conf is world-readable; no sudo needed for read)
+        try:
+            backup = path.read_text()
+        except PermissionError:
+            return False, "Permission denied reading nginx.conf"
+
+        # Write via sudo tee (stdout discarded, only exit code matters)
+        ok, out = _run(
+            ["sudo", "--non-interactive", "tee", str(path)],
+            stdin=content,
+        )
+        if not ok:
+            return False, f"Permission denied writing nginx.conf: {out}"
+
+        # Validate; roll back on failure
+        valid, out = test_config()
+        if not valid:
+            _run(["sudo", "--non-interactive", "tee", str(path)], stdin=backup)
+            return False, f"Validation failed, rolled back: {out}"
+        return True, "Config saved and validated"
+
     try:
         backup = path.read_text()
         path.write_text(content)
@@ -119,7 +156,7 @@ def write_config(content: str) -> tuple[bool, str]:
             return False, f"Validation failed, rolled back: {out}"
         return True, "Config saved and validated"
     except PermissionError:
-        return False, "Permission denied — the process lacks write access to nginx.conf"
+        return False, "Permission denied — set NGINX_USE_SUDO=true and install the sudoers drop-in"
 
 
 def get_stats() -> dict:

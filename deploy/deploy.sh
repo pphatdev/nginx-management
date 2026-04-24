@@ -90,6 +90,18 @@ systemctl enable "${APP_NAME}"
 systemctl start "${APP_NAME}"
 systemctl status "${APP_NAME}" --no-pager
 
+echo "==> Installing sudoers drop-in for nginx privilege delegation..."
+NGINX_BIN="$(command -v nginx 2>/dev/null || echo /usr/sbin/nginx)"
+NGINX_CONF_PATH="${NGINX_CONFIG_PATH:-/etc/nginx/nginx.conf}"
+SUDOERS_DEST="/etc/sudoers.d/${APP_NAME}"
+sed \
+  -e "s|__APP_USER__|${APP_USER}|g" \
+  -e "s|__NGINX_BIN__|${NGINX_BIN}|g" \
+  -e "s|__NGINX_CONF__|${NGINX_CONF_PATH}|g" \
+  "deploy/nginx-management-sudoers" > "${SUDOERS_DEST}"
+chmod 0440 "${SUDOERS_DEST}"
+visudo -cf "${SUDOERS_DEST}" || { echo "Error: generated sudoers file is invalid — aborting"; rm -f "${SUDOERS_DEST}"; exit 1; }
+
 echo "==> Installing Nginx config..."
 cp "${NGINX_CONF}" /etc/nginx/sites-available/
 ln -sf "/etc/nginx/sites-available/${APP_NAME}.conf" \

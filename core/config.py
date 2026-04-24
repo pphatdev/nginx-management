@@ -18,6 +18,9 @@ class Settings(BaseSettings):
     nginx_config_path: str = "/etc/nginx/nginx.conf"
     nginx_pid_path: str = "/var/run/nginx.pid"
     nginx_binary: str = "nginx"
+    # Set to True in production so nginx -t / nginx -s reload run via sudo.
+    # Requires the sudoers drop-in from deploy/nginx-management-sudoers.
+    nginx_use_sudo: bool = False
 
 
 settings = Settings()
