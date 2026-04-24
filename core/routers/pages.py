@@ -6,8 +6,8 @@ from fastapi.templating import Jinja2Templates
 
 from core.services import nginx, store
 
-BASE_DIR = Path(__file__).parent.parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+templates = Jinja2Templates(directory=str(BASE_DIR / "client" / "templates"))
 
 router = APIRouter()
 
