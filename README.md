@@ -142,9 +142,16 @@ deploy/
 git clone https://github.com/pphatdev/nginx-management.git /var/www/nginx-management
 cd /var/www/nginx-management
 
-# Run the install script (requires root)
+# Run the install script (requires root).
+# --user defaults to www-data; pass --user=USERNAME to use a different account.
 sudo bash deploy/deploy.sh --install
+# or with an explicit user:
+sudo bash deploy/deploy.sh --install --user=myapp
 ```
+
+> **Note:** The specified user must already exist on the system. If it doesn't,
+> the script will exit with an error before making any changes. Create the user
+> first with `sudo useradd --system --no-create-home myapp`.
 
 The script will:
 

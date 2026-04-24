@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # deploy.sh — Install or update nginx-management on this server.
 # Usage:
-#   First deploy:  sudo bash deploy/deploy.sh --install
+#   First deploy:  sudo bash deploy/deploy.sh --install [--user=USERNAME]
 #   Update only:   sudo bash deploy/deploy.sh --update
 
 set -euo pipefail
 
 APP_NAME="nginx-management"
 APP_DIR="/var/www/nginx-management"
-APP_USER="${SUDO_USER:-pphat}"
+APP_USER="${SUDO_USER:-www-data}"
 SERVICE_FILE="deploy/${APP_NAME}.service"
 NGINX_CONF="deploy/${APP_NAME}.conf"
 
@@ -17,17 +17,25 @@ UPDATE=false
 
 for arg in "$@"; do
   case $arg in
-    --install) INSTALL=true ;;
-    --update)  UPDATE=true ;;
+    --install)  INSTALL=true ;;
+    --update)   UPDATE=true ;;
+    --user=*)   APP_USER="${arg#*=}" ;;
     *)
-      echo "Usage: $0 --install | --update"
+      echo "Usage: $0 --install | --update [--user=USERNAME]"
       exit 1
       ;;
   esac
 done
 
 if [[ "$INSTALL" == false && "$UPDATE" == false ]]; then
-  echo "Usage: $0 --install | --update"
+  echo "Usage: $0 --install | --update [--user=USERNAME]"
+  exit 1
+fi
+
+# Validate the deployment user exists before proceeding
+if ! id -u "${APP_USER}" &>/dev/null; then
+  echo "Error: user '${APP_USER}' does not exist."
+  echo "       Create the user first or specify an existing one with --user=USERNAME"
   exit 1
 fi
 
@@ -59,7 +67,7 @@ ufw allow OpenSSH
 ufw allow 9991/tcp
 ufw --force enable
 
-echo "==> Setting directory ownership..."
+echo "==> Setting directory ownership (user: ${APP_USER})..."
 chown -R "${APP_USER}:${APP_USER}" "$APP_DIR"
 
 echo "==> Creating virtual environment..."
