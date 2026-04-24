@@ -38,5 +38,5 @@ docker compose ps
 docker compose logs --tail=100 app
 sudo nginx -t
 sudo systemctl reload nginx
-curl -I http://127.0.0.1:8000
+curl -I http://127.0.0.1:9991
 ```

@@ -8,6 +8,7 @@ set -euo pipefail
 
 APP_NAME="nginx-management"
 APP_DIR="/var/www/nginx-management"
+APP_USER="${SUDO_USER:-pphat}"
 SERVICE_FILE="deploy/${APP_NAME}.service"
 NGINX_CONF="deploy/${APP_NAME}.conf"
 
@@ -55,11 +56,11 @@ apt-get install -y -qq python3 python3-pip python3-venv nginx ufw
 
 echo "==> Configuring firewall..."
 ufw allow OpenSSH
-ufw allow 'Nginx Full'
+ufw allow 9991/tcp
 ufw --force enable
 
 echo "==> Setting directory ownership..."
-chown -R www-data:www-data "$APP_DIR"
+chown -R "${APP_USER}:${APP_USER}" "$APP_DIR"
 
 echo "==> Creating virtual environment..."
 cd "$APP_DIR"
@@ -67,7 +68,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
-pip install --quiet gunicorn
 
 echo "==> Setting up .env..."
 if [[ ! -f .env ]]; then
@@ -92,7 +92,7 @@ systemctl reload nginx
 echo ""
 echo "==> Done! Verify:"
 echo "    systemctl status ${APP_NAME}"
-echo "    curl -I http://127.0.0.1:8000"
+echo "    curl -I http://127.0.0.1:9991"
 echo ""
 echo "    To enable HTTPS:"
 echo "    sudo certbot --nginx -d <your-domain>"

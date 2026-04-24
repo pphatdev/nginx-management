@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     app_host: str = "127.0.0.1"
-    app_port: int = 8000
+    app_port: int = 9991
 
     nginx_config_path: str = "/etc/nginx/nginx.conf"
     nginx_pid_path: str = "/var/run/nginx.pid"
