@@ -105,6 +105,78 @@ Interactive API docs are available at [http://localhost:8000/docs](http://localh
 
 ---
 
+## Deployment
+
+Production deployment uses **Gunicorn + Uvicorn workers** behind **Nginx**, managed by systemd.
+
+### Files
+
+```
+deploy/
+├── deploy.sh                   # Install / update script
+├── nginx-management.service    # systemd unit file
+└── nginx-management.conf       # Nginx reverse proxy config
+```
+
+### First Deploy
+
+```bash
+# On the target server (Ubuntu 22.04+)
+git clone https://github.com/pphatdev/nginx-management.git /var/www/nginx-management
+cd /var/www/nginx-management
+
+# Run the install script (requires root)
+sudo bash deploy/deploy.sh --install
+```
+
+The script will:
+
+1. Install `python3`, `python3-venv`, `nginx`, and `ufw`
+2. Create a virtualenv and install dependencies
+3. Copy `.env.example` → `.env` (edit before starting)
+4. Register and start the `nginx-management` systemd service
+5. Install and enable the Nginx site config
+
+### Configure Domain
+
+Edit `deploy/nginx-management.conf` and replace `example.com` with your domain, then reload Nginx:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Enable HTTPS
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+### Deploy Updates
+
+```bash
+cd /var/www/nginx-management
+sudo bash deploy/deploy.sh --update
+```
+
+### Verify
+
+```bash
+systemctl status nginx-management
+curl -I http://127.0.0.1:8000
+sudo nginx -t
+```
+
+### Troubleshoot
+
+```bash
+journalctl -u nginx-management -f
+sudo tail -n 100 /var/log/nginx/error.log
+sudo ss -tulpn | grep -E '(:80|:443|:8000)'
+```
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
