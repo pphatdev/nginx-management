@@ -98,14 +98,17 @@ def reload() -> tuple[bool, str]:
     ok, out = test_config()
     if not ok:
         return False, f"Config test failed: {out}"
-    return _run([settings.nginx_binary, "-s", "reload"])
+    return _run(_sudo([settings.nginx_binary, "-s", "reload"]))
 
 
 def read_config() -> str:
-    """Read nginx.conf from disk. Returns a stub when not present (dev mode)."""
+    """Read nginx.conf from disk. Returns a stub when not present or unreadable (dev mode)."""
     path = Path(settings.nginx_config_path)
     if path.exists():
-        return path.read_text()
+        try:
+            return path.read_text()
+        except PermissionError:
+            pass
     return _DEFAULT_CONFIG
 
 

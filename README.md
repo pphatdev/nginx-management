@@ -159,7 +159,7 @@ The script will:
 1. Install `python3`, `python3-venv`, `nginx`, and `ufw`
 2. Create a virtualenv and install dependencies
 3. Copy `.env.example` → `.env` (edit before starting)
-4. Register and start the `nginx-management` systemd service
+4. Generate the systemd unit from the template, substituting the chosen user and install path
 5. Install the narrowly-scoped sudoers drop-in (see **Permission model** below)
 6. Install and enable the Nginx site config
 
