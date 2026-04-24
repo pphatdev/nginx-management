@@ -1,0 +1,21 @@
+[Unit]
+Description=Nginx Management UI
+After=network.target
+
+[Service]
+Type=simple
+User=pphat
+Group=pphat
+WorkingDirectory=/var/www/nginx-management
+EnvironmentFile=/var/www/nginx-management/.env
+ExecStart=/var/www/nginx-management/.venv/bin/gunicorn app:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --access-logfile - \
+    --error-logfile -
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
