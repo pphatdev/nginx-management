@@ -178,18 +178,22 @@ sudo bash deploy/deploy.sh --update
 
 ### Verify
 
+Verify the Nginx listener on `9991`:
+
 ```bash
 systemctl status nginx-management
-curl -I http://127.0.0.1:8000
+curl -I http://127.0.0.1:9991
 sudo nginx -t
 ```
+
+If your FastAPI upstream listens on a different internal port (for example `8000`), verify that separately from the Nginx listener.
 
 ### Troubleshoot
 
 ```bash
 journalctl -u nginx-management -f
 sudo tail -n 100 /var/log/nginx/error.log
-sudo ss -tulpn | grep -E '(:80|:443|:8000)'
+sudo ss -tulpn | grep -E '(:80|:443|:9991)'
 ```
 
 ---
