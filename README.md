@@ -90,7 +90,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Then open [http://localhost:8000](http://localhost:8000) in your browser.
+Then open [http://localhost:9991](http://localhost:9991) in your browser.
 
 The server starts with **hot-reload** enabled by default (`reload=True`).
 
