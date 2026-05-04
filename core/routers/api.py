@@ -1,7 +1,9 @@
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 from typing import List, Dict, Any
 import subprocess
 import os
+import asyncio
 from datetime import datetime
 
 router = APIRouter()
@@ -163,3 +165,92 @@ async def get_deployments():
         pass
 
     return deployments
+
+class GitImport(BaseModel):
+    url: str
+    name: str
+
+@router.post("/projects/import")
+async def import_git_project(data: GitImport):
+    base_path = "/var/www"
+    target_path = os.path.join(base_path, data.name)
+    
+    if os.path.exists(target_path):
+        raise HTTPException(status_code=400, detail="Project directory already exists")
+        
+    try:
+        # Using non-blocking asyncio subprocess
+        process = await asyncio.create_subprocess_exec(
+            "git", "clone", data.url, target_path,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            error_msg = stderr.decode().strip() or "Unknown Git error"
+            raise HTTPException(status_code=500, detail=f"Git clone failed: {error_msg}")
+            
+        return {"message": "Project imported successfully", "path": target_path}
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.delete("/projects/{name}")
+async def delete_project(name: str):
+    base_path = "/var/www"
+    target_path = os.path.join(base_path, name)
+    
+    # Security check: Ensure name doesn't contain path traversal
+    if ".." in name or "/" in name:
+        raise HTTPException(status_code=400, detail="Invalid project name")
+        
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=404, detail="Project not found")
+        
+    try:
+        # 1. Cleanup PM2 (if exists)
+        await asyncio.create_subprocess_exec("sudo", "/usr/bin/pm2", "delete", name)
+        
+        # 2. Cleanup Nginx Configs
+        conf_path = f"/etc/nginx/sites-available/{name}.conf"
+        enabled_path = f"/etc/nginx/sites-enabled/{name}.conf"
+        
+        cleanup_cmd = f"sudo /usr/bin/rm -f {conf_path} {enabled_path} && sudo /usr/sbin/nginx -s reload"
+        process_nginx = await asyncio.create_subprocess_shell(cleanup_cmd)
+        await process_nginx.wait()
+        
+        # 3. Cleanup Project Directory
+        process_dir = await asyncio.create_subprocess_exec(
+            "sudo", "/usr/bin/rm", "-rf", target_path
+        )
+        await process_dir.wait()
+        
+        if process_dir.returncode != 0:
+            raise HTTPException(status_code=500, detail="Failed to delete project directory")
+            
+        return {"message": f"Project {name} and its configurations deleted successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/check-port/{port}")
+async def check_port(port: int):
+    import psutil
+    # 1. Check active processes
+    for conn in psutil.net_connections():
+        if conn.laddr.port == port:
+            return {"in_use": True, "reason": "Process active on port"}
+            
+    # 2. Check Nginx configs
+    sites_enabled = "/etc/nginx/sites-enabled"
+    if os.path.exists(sites_enabled):
+        for f in os.listdir(sites_enabled):
+            try:
+                with open(os.path.join(sites_enabled, f), 'r') as cf:
+                    if f":{port}" in cf.read():
+                        return {"in_use": True, "reason": f"Project {f} uses this port"}
+            except: pass
+            
+    return {"in_use": False}

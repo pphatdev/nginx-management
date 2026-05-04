@@ -41,15 +41,21 @@ fi
 
 # ── Update: pull code, sync deps, restart service ────────────────────────────
 if [[ "$UPDATE" == true ]]; then
-  echo "==> Pulling latest code..."
+  echo "==> Synchronizing code (preserving local changes)..."
   cd "$APP_DIR"
-  git pull origin master
+  git stash push -m "Auto-stash before update"
+  git pull origin master --rebase || { echo "Error: git pull failed"; git stash pop; exit 1; }
+  git stash pop || echo "Notice: No stashed changes to reapply or conflicts occurred."
 
   echo "==> Updating dependencies..."
   source .venv/bin/activate
   pip install --quiet --upgrade pip
   pip install --quiet -r requirements.txt
 
+  echo "==> Re-applying system configurations..."
+  # Re-run the installation of service and sudoers to apply template changes
+  bash "$0" --install-configs
+  
   echo "==> Restarting service..."
   systemctl restart "${APP_NAME}"
   systemctl status "${APP_NAME}" --no-pager
@@ -57,10 +63,40 @@ if [[ "$UPDATE" == true ]]; then
   exit 0
 fi
 
+# Helper for internal config re-application
+if [[ "${1:-}" == "--install-configs" ]]; then
+    # (Existing install logic for service and sudoers extracted below)
+    APP_USER="${APP_USER:-$(stat -c '%U' "$APP_DIR")}"
+    
+    echo "    Updating systemd service..."
+    SERVICE_DEST="/etc/systemd/system/${APP_NAME}.service"
+    sed -e "s|__APP_USER__|${APP_USER}|g" -e "s|__APP_DIR__|${APP_DIR}|g" "${SERVICE_FILE}" > "${SERVICE_DEST}"
+    systemctl daemon-reload
+    
+    echo "    Updating sudoers drop-in..."
+    NGINX_BIN="$(command -v nginx 2>/dev/null || echo /usr/sbin/nginx)"
+    NGINX_CONF_PATH="${NGINX_CONFIG_PATH:-/etc/nginx/nginx.conf}"
+    SUDOERS_DEST="/etc/sudoers.d/${APP_NAME}"
+    sed -e "s|__APP_USER__|${APP_USER}|g" -e "s|__NGINX_BIN__|${NGINX_BIN}|g" -e "s|__NGINX_CONF__|${NGINX_CONF_PATH}|g" "deploy/nginx-management-sudoers" > "${SUDOERS_DEST}"
+    chmod 0440 "${SUDOERS_DEST}"
+    visudo -cf "${SUDOERS_DEST}"
+    
+    echo "    Updating Nginx config..."
+    cp "${NGINX_CONF}" /etc/nginx/sites-available/
+    ln -sf "/etc/nginx/sites-available/${APP_NAME}.conf" "/etc/nginx/sites-enabled/${APP_NAME}.conf"
+    systemctl reload nginx
+    exit 0
+fi
+
 # ── Install: full first-time setup ───────────────────────────────────────────
 echo "==> Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv nginx ufw
+apt-get install -y -qq python3 python3-pip python3-venv nginx ufw certbot python3-certbot-nginx git curl
+
+echo "==> Installing Node.js and PM2..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y -qq nodejs
+npm install -g pm2 ts-node
 
 echo "==> Configuring firewall..."
 ufw allow OpenSSH

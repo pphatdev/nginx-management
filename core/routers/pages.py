@@ -14,8 +14,6 @@ async def dashboard(request: Request):
     })
 
 
-
-
 @router.get("/monitoring", response_class=HTMLResponse)
 async def monitoring(request: Request):
     return templates.TemplateResponse("monitoring.html", {
@@ -30,4 +28,12 @@ async def projects(request: Request):
         "request": request,
         "active_page": "projects",
         "title": "Project Management | NGINX CONTROL"
+    })
+
+@router.get("/import", response_class=HTMLResponse)
+async def import_project(request: Request):
+    return templates.TemplateResponse("import.html", {
+        "request": request,
+        "active_page": "import",
+        "title": "Import Project | Nginx Management"
     })
