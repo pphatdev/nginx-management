@@ -1,0 +1,9 @@
+[program:{{name}}]
+command={{start_command}}
+directory={{project_path}}
+user={{user}}
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor/{{name}}.err.log
+stdout_logfile=/var/log/supervisor/{{name}}.out.log
+environment=PORT="{{port}}"{{environment_vars}}

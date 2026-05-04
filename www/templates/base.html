@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>{{ title if title else "NGINX CONTROL" }}</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#007AFF",
+                        "background": "#020617",
+                        "surface": "#0F172A",
+                        "surface-bright": "#1E293B",
+                        "on-surface": "#dae2fd",
+                        "on-surface-variant": "#c1c6d7",
+                        "success": "#10B981",
+                        "error": "#EF4444",
+                        "warning": "#F59E0B",
+                        "border-color": "#1E293B"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "mono": ["Space Grotesk", "monospace"]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #dae2fd;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: .5;
+            }
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #0b1326;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #1E293B;
+        }
+
+        /* Transitions */
+        .page-transition {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body class="antialiased overflow-hidden">
+    <!-- Sidebar -->
+    <nav class="fixed left-0 top-0 w-[280px] h-full border-r border-border-color bg-surface flex flex-col z-30">
+        <div class="p-6 border-b border-border-color">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-primary flex items-center justify-center rounded-sm">
+                    <span class="material-symbols-outlined text-white text-xl">settings_input_component</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black tracking-tighter text-white font-headline">NGINX CONTROL</h1>
+                    <p class="text-[10px] uppercase font-bold tracking-widest text-slate-500 font-headline">Enterprise
+                        Console</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex-1 py-6 overflow-y-auto custom-scrollbar">
+            <div class="px-4 mb-4">
+                <a href="/import"
+                    class="w-full bg-primary text-white py-2 rounded-sm font-bold font-headline text-[12px] uppercase tracking-tight flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-95">
+                    <span class="material-symbols-outlined text-sm">add</span> New Deployment
+                </a>
+            </div>
+            <div class="space-y-1">
+                <a class="flex items-center gap-3 px-4 py-3 {{ 'border-l-2 border-primary bg-primary/10 text-primary' if active_page == 'dashboard' else 'text-slate-400 hover:text-slate-100 hover:bg-slate-800' }} font-headline text-[12px] font-bold tracking-tight uppercase transition-all"
+                    href="/">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 {{ 'border-l-2 border-primary bg-primary/10 text-primary' if active_page == 'projects' else 'text-slate-400 hover:text-slate-100 hover:bg-slate-800' }} font-headline text-[12px] font-bold tracking-tight uppercase transition-all"
+                    href="/projects">
+                    <span class="material-symbols-outlined">folder</span>
+                    <span>Projects</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 {{ 'border-l-2 border-primary bg-primary/10 text-primary' if active_page == 'monitoring' else 'text-slate-400 hover:text-slate-100 hover:bg-slate-800' }} font-headline text-[12px] font-bold tracking-tight uppercase transition-all"
+                    href="/monitoring">
+                    <span class="material-symbols-outlined">query_stats</span>
+                    <span>Monitoring</span>
+                </a>
+            </div>
+        </div>
+        <div class="p-4 border-t border-border-color bg-slate-900/50">
+            <div class="flex items-center gap-3">
+                <img alt="Admin" class="w-8 h-8 rounded-full border border-slate-700"
+                    src="https://ui-avatars.com/api/?name=Admin&background=007AFF&color=fff" />
+                <div class="flex-1">
+                    <p class="text-xs font-bold text-white">Admin-01</p>
+                    <p class="text-[10px] text-slate-500 font-mono">192.168.1.105</p>
+                </div>
+                <span
+                    class="material-symbols-outlined text-slate-500 hover:text-white cursor-pointer transition-colors">settings</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header
+        class="fixed top-0 left-[280px] right-0 h-16 bg-background border-b border-border-color flex items-center justify-between px-6 z-20">
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 text-slate-200 font-bold font-headline text-sm">
+                <span class="material-symbols-outlined text-primary">cloud</span>
+                <span>Production Cluster</span>
+            </div>
+            <div class="h-4 w-px bg-slate-800"></div>
+            <div class="relative group">
+                <span
+                    class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">search</span>
+                <input
+                    class="bg-surface border border-border-color rounded-sm py-1.5 pl-9 pr-4 text-xs font-headline text-slate-300 w-64 focus:outline-none focus:border-primary transition-all"
+                    placeholder="Search resources..." type="text" />
+            </div>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4 text-slate-400">
+                <span class="material-symbols-outlined hover:text-white cursor-pointer text-xl">terminal</span>
+                <span class="material-symbols-outlined hover:text-white cursor-pointer text-xl">notifications</span>
+                <button id="reload-nginx-btn" class="hover:text-white"><span
+                        class="material-symbols-outlined text-xl">refresh</span></button>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div class="flex items-center gap-2">
+                <div class="w-2 h-2 rounded-full bg-emerald-500 pulse"></div>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-tighter font-headline">System
+                    Operational</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="ml-[280px] mt-16 p-6 h-[calc(100vh-64px)] overflow-y-auto custom-scrollbar bg-background">
+        <div class="max-w-[1440px] mx-auto page-transition">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <script>
+        document.getElementById('reload-nginx-btn')?.addEventListener('click', async () => {
+            const btn = document.getElementById('reload-nginx-btn');
+            btn.classList.add('animate-spin');
+            try {
+                const response = await fetch('/api/nginx/reload', { method: 'POST' });
+                const data = await response.json();
+                alert(data.message);
+            } catch (error) {
+                alert('Error reloading Nginx');
+            } finally {
+                btn.classList.remove('animate-spin');
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

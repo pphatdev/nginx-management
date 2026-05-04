@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Project Management</h2>
+        <p class="text-sm font-body text-on-surface-variant">Scanning and orchestrating local applications from /var/www.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="bg-surface-bright hover:bg-slate-700 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline border border-slate-700 flex items-center gap-2 transition-colors" onclick="loadProjects()">
+            <span class="material-symbols-outlined text-sm">refresh</span> Re-scan Directory
+        </button>
+    </div>
+</div>
+
+<div class="bg-surface border border-border-color rounded-sm overflow-hidden">
+    <div class="p-4 border-b border-border-color flex items-center justify-between bg-slate-900/50">
+        <h3 class="text-[11px] font-bold text-white uppercase tracking-widest font-headline">Detected Projects in /var/www</h3>
+        <span class="text-[10px] font-mono text-slate-500 uppercase" id="project-count">0 Projects Found</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-slate-800/50">
+                    <th class="px-6 py-3 font-headline">Status</th>
+                    <th class="px-6 py-3 font-headline">Project Name</th>
+                    <th class="px-6 py-3 font-headline">Domain</th>
+                    <th class="px-6 py-3 font-headline">Port</th>
+                    <th class="px-6 py-3 font-headline">Type</th>
+                    <th class="px-6 py-3 font-headline">Modified</th>
+                    <th class="px-6 py-3 font-headline text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/50" id="project-list">
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-slate-500 italic">Scanning filesystem...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadProjects() {
+        const list = document.getElementById('project-list');
+        const countLabel = document.getElementById('project-count');
+        
+        try {
+            const response = await fetch('/api/projects');
+            const projects = await response.json();
+            
+            list.innerHTML = '';
+            countLabel.innerText = `${projects.length} Projects Found`;
+            
+            if (projects.length === 0) {
+                list.innerHTML = '<tr><td colspan="7" class="px-6 py-12 text-center text-slate-500 italic">No projects detected in /var/www</td></tr>';
+                return;
+            }
+            
+            projects.forEach(project => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/30 group transition-colors';
+                
+                let typeBadge = '';
+                switch(project.type) {
+                    case 'Node.js': typeBadge = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'; break;
+                    case 'Python': typeBadge = 'text-blue-400 bg-blue-400/10 border-blue-400/20'; break;
+                    case 'Static': typeBadge = 'text-warning bg-warning/10 border-warning/20'; break;
+                    default: typeBadge = 'text-slate-400 bg-slate-800/50 border-slate-700';
+                }
+
+                let statusBadge = project.active 
+                    ? '<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-sm text-[9px] font-bold uppercase tracking-wider">Active</span>'
+                    : '<span class="px-2 py-0.5 bg-slate-800/50 text-slate-500 border border-slate-800 rounded-sm text-[9px] font-bold uppercase tracking-wider">Inactive</span>';
+
+                if (project.deploying) {
+                    statusBadge = '<span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase flex items-center gap-1.5 w-fit"><span class="w-1.5 h-1.5 bg-primary rounded-full pulse"></span> Deploying</span>';
+                }
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4">${statusBadge}</td>
+                    <td class="px-6 py-4 font-bold text-white text-sm font-headline">${project.name}</td>
+                    <td class="px-6 py-4 font-mono text-[10px] text-slate-400">${project.domain}</td>
+                    <td class="px-6 py-4 font-mono text-[10px] text-primary font-bold">${project.port}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 border rounded-sm text-[9px] font-bold uppercase ${typeBadge}">${project.type}</span></td>
+                    <td class="px-6 py-4 text-[10px] text-slate-500 font-mono">${project.last_modified}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="deployProject('${project.name}')" class="text-[9px] font-bold uppercase text-primary hover:text-white transition-colors">Config</button>
+                            <button onclick="deleteProject('${project.name}')" class="text-[9px] font-bold uppercase text-error hover:brightness-125 transition-colors">Delete</button>
+                        </div>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    }
+
+    async function deleteProject(name) {
+        if (!confirm(`Are you sure you want to delete ${name}? This will permanently remove all files in /var/www/${name}.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/projects/${name}`, { method: 'DELETE' });
+            const data = await response.json();
+            
+            if (response.ok) {
+                loadProjects();
+            } else {
+                alert(`Error: ${data.detail}`);
+            }
+        } catch (error) {
+            alert(`Failed to delete project: ${error.message}`);
+        }
+    }
+
+    function deployProject(name) {
+        window.location.href = `/servers?deploy=${encodeURIComponent(name)}`;
+    }
+
+    loadProjects();
+    setInterval(loadProjects, 10000);
+</script>
+{% endblock %}

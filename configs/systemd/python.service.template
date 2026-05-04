@@ -1,0 +1,20 @@
+[Unit]
+Description={{description}}
+After=network.target
+
+[Service]
+User={{user}}
+Group={{group}}
+WorkingDirectory={{project_path}}
+Environment=PORT={{port}}
+EnvironmentFile={{project_path}}/.env
+{{environment_vars}}
+ExecStart={{project_path}}/.venv/bin/gunicorn {{app_module}}:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 127.0.0.1:{{port}}
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier={{name}}
+
+[Install]
+WantedBy=multi-user.target

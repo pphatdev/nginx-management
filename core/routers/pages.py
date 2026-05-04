@@ -1,58 +1,39 @@
-from pathlib import Path
-
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from core.services import nginx, store
-
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "client" / "templates"))
-
 router = APIRouter()
-
+templates = Jinja2Templates(directory="www/templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    servers = store.get_servers()
-    upstreams = store.get_upstreams()
-    total_backends = sum(len(u.backends) for u in upstreams)
-    up_backends = sum(1 for u in upstreams for b in u.backends if b.status == "up")
-    active_servers = sum(1 for s in servers if s.status == "active")
     return templates.TemplateResponse("index.html", {
         "request": request,
-        "page": "dashboard",
-        "stats": nginx.get_stats(),
-        "active_servers": active_servers,
-        "total_servers": len(servers),
-        "up_backends": up_backends,
-        "total_backends": total_backends,
-        "upstreams": [u.model_dump() for u in upstreams],
+        "active_page": "dashboard",
+        "title": "Dashboard | Nginx Management"
     })
 
 
-@router.get("/servers", response_class=HTMLResponse)
-async def servers_page(request: Request):
-    return templates.TemplateResponse("servers.html", {
+@router.get("/monitoring", response_class=HTMLResponse)
+async def monitoring(request: Request):
+    return templates.TemplateResponse("monitoring.html", {
         "request": request,
-        "page": "servers",
-        "servers": [s.model_dump() for s in store.get_servers()],
+        "active_page": "monitoring",
+        "title": "Monitoring | NGINX CONTROL"
     })
 
-
-@router.get("/upstreams", response_class=HTMLResponse)
-async def upstreams_page(request: Request):
-    return templates.TemplateResponse("upstreams.html", {
+@router.get("/projects", response_class=HTMLResponse)
+async def projects(request: Request):
+    return templates.TemplateResponse("projects.html", {
         "request": request,
-        "page": "upstreams",
-        "upstreams": [u.model_dump() for u in store.get_upstreams()],
+        "active_page": "projects",
+        "title": "Project Management | NGINX CONTROL"
     })
 
-
-@router.get("/config", response_class=HTMLResponse)
-async def config_page(request: Request):
-    return templates.TemplateResponse("config.html", {
+@router.get("/import", response_class=HTMLResponse)
+async def import_project(request: Request):
+    return templates.TemplateResponse("import.html", {
         "request": request,
-        "page": "config",
-        "config": nginx.read_config(),
+        "active_page": "import",
+        "title": "Import Project | Nginx Management"
     })

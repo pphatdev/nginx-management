@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-container: #4b8eff;
+        --secondary: #4edea3;
+        --surface-container: #171f33;
+        --outline-variant: #414755;
+        --on-surface: #dae2fd;
+        --outline: #8b90a0;
+    }
+    .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+</style>
+
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+    <div>
+        <h2 class="text-3xl font-bold text-white font-headline">Monitoring & Analytics</h2>
+        <p class="text-sm text-slate-500 flex items-center gap-2 mt-1">
+            <span class="material-symbols-outlined text-sm">query_stats</span>
+            Telemetry data for cluster ingress nodes (all regions)
+        </p>
+    </div>
+    <div class="flex items-center gap-3">
+        <div class="flex items-center bg-slate-900 rounded border border-slate-800 p-1">
+            <button class="px-3 py-1 text-[10px] font-bold text-white bg-slate-800 rounded uppercase">60M</button>
+            <button class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white uppercase">6H</button>
+            <button class="px-3 py-1 text-[10px] font-bold text-slate-500 hover:text-white uppercase">24H</button>
+        </div>
+        <div class="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded">
+            <span class="w-2 h-2 bg-emerald-500 rounded-full pulse"></span>
+            <span class="text-emerald-500 text-[10px] font-bold uppercase tracking-wider">Live</span>
+        </div>
+    </div>
+</div>
+
+<!-- Top Level KPIs -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="bg-surface-bright border border-slate-800 p-5 rounded-sm relative overflow-hidden group">
+        <div class="absolute top-0 left-0 w-1 h-full bg-primary transition-all group-hover:w-1.5"></div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">CPU UTILIZATION</p>
+        <div class="flex items-end gap-2">
+            <h3 class="text-3xl font-black text-white font-headline" id="stat-cpu">0.0%</h3>
+            <span class="text-emerald-500 text-[10px] mb-1 font-mono font-bold flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[10px]">trending_up</span> 2%
+            </span>
+        </div>
+    </div>
+    <div class="bg-surface-bright border border-slate-800 p-5 rounded-sm relative overflow-hidden group">
+        <div class="absolute top-0 left-0 w-1 h-full bg-primary transition-all group-hover:w-1.5"></div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">AVG LATENCY</p>
+        <div class="flex items-end gap-2">
+            <h3 class="text-3xl font-black text-white font-headline">24ms</h3>
+            <span class="text-error text-[10px] mb-1 font-mono font-bold flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[10px]">trending_up</span> 4ms
+            </span>
+        </div>
+    </div>
+    <div class="bg-surface-bright border border-slate-800 p-5 rounded-sm relative overflow-hidden group">
+        <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 transition-all group-hover:w-1.5"></div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">MEMORY USAGE</p>
+        <div class="flex items-end gap-2">
+            <h3 class="text-3xl font-black text-white font-headline" id="stat-mem">0.0%</h3>
+            <span class="text-emerald-500 text-[10px] mb-1 font-mono font-bold" id="stat-mem-raw">0.0 GB</span>
+        </div>
+    </div>
+    <div class="bg-surface-bright border border-slate-800 p-5 rounded-sm relative overflow-hidden group">
+        <div class="absolute top-0 left-0 w-1 h-full bg-amber-500 transition-all group-hover:w-1.5"></div>
+        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">NETWORK LOAD</p>
+        <div class="flex items-end gap-2">
+            <h3 class="text-3xl font-black text-white font-headline" id="stat-net">0.0 <span class="text-sm font-normal">Mb/s</span></h3>
+            <span class="text-slate-500 text-[10px] mb-1 font-mono font-bold uppercase tracking-widest">STABLE</span>
+        </div>
+    </div>
+</div>
+
+<!-- Analytics Grid -->
+<div class="grid grid-cols-12 gap-6 mb-6">
+    <!-- Large Traffic Volume Chart -->
+    <div class="col-span-12 lg:col-span-8 bg-surface-bright border border-slate-800 p-6 rounded-sm">
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-4">
+                <h4 class="text-xs font-bold text-white uppercase tracking-widest font-headline">Traffic Volume</h4>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-1 bg-primary rounded-full"></div>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">NETWORK IN</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-3 h-1 bg-emerald-500 rounded-full"></div>
+                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">NETWORK OUT</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="h-64 relative">
+            <canvas id="trafficChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Response Codes -->
+    <div class="col-span-12 lg:col-span-4 bg-surface-bright border border-slate-800 p-6 rounded-sm flex flex-col">
+        <h4 class="text-xs font-bold text-white uppercase tracking-widest font-headline mb-6">Response Codes</h4>
+        <div class="flex-1 flex flex-col justify-center items-center relative">
+            <div class="w-40 h-40 rounded-full border-[12px] border-emerald-500/20 relative flex items-center justify-center">
+                <div class="absolute inset-[-12px] rounded-full border-[12px] border-primary border-t-transparent border-l-transparent"></div>
+                <div class="text-center">
+                    <p class="text-2xl font-black text-white">99.8%</p>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase">Success</p>
+                </div>
+            </div>
+        </div>
+        <div class="mt-6 space-y-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    <span class="text-xs font-mono text-slate-300">2xx OK</span>
+                </div>
+                <span class="text-xs font-mono text-slate-500">Live</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-primary rounded-full"></div>
+                    <span class="text-xs font-mono text-slate-300">3xx Redirect</span>
+                </div>
+                <span class="text-xs font-mono text-slate-500">0</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-amber-500 rounded-full"></div>
+                    <span class="text-xs font-mono text-slate-300">4xx User Error</span>
+                </div>
+                <span class="text-xs font-mono text-slate-500">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Server Health Heatmap -->
+<div class="bg-surface-bright border border-slate-800 p-6 rounded-sm mb-6">
+    <div class="flex items-center justify-between mb-6">
+        <h4 class="text-xs font-bold text-white uppercase tracking-widest font-headline">Server Health Heatmap</h4>
+        <div class="flex items-center gap-4 text-[10px] font-bold text-slate-500">
+            <span class="flex items-center gap-1"><div class="w-2 h-2 bg-emerald-500/20 rounded-sm"></div> IDLE</span>
+            <span class="flex items-center gap-1"><div class="w-2 h-2 bg-emerald-500/60 rounded-sm"></div> MEDIUM</span>
+            <span class="flex items-center gap-1"><div class="w-2 h-2 bg-emerald-500 rounded-sm"></div> HEAVY</span>
+            <span class="flex items-center gap-1"><div class="w-2 h-2 bg-error rounded-sm"></div> CRITICAL</span>
+        </div>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="cpu-cores-container">
+        <!-- Core cards will be injected here -->
+    </div>
+</div>
+
+<!-- Access Logs Feed -->
+<div class="bg-black border border-slate-800 rounded-sm overflow-hidden flex flex-col h-[400px]">
+    <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+            <span class="text-[10px] font-bold text-white uppercase flex items-center gap-2 tracking-widest">
+                <span class="material-symbols-outlined text-sm">terminal</span>
+                Access Logs Stream
+            </span>
+            <span class="text-[10px] font-mono text-emerald-500 animate-pulse font-bold">● CONNECTED</span>
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto font-mono text-[11px] p-0 custom-scrollbar">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 bg-slate-900 text-slate-500 uppercase">
+                <tr>
+                    <th class="py-2 px-4 font-normal">Timestamp</th>
+                    <th class="py-2 px-4 font-normal">Method</th>
+                    <th class="py-2 px-4 font-normal">Path</th>
+                    <th class="py-2 px-4 font-normal">Status</th>
+                    <th class="py-2 px-4 font-normal">Latency</th>
+                </tr>
+            </thead>
+            <tbody id="log-feed" class="text-slate-400">
+                <!-- Log entries will be injected here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300, easing: 'linear' },
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: '#1E293B', drawBorder: false }, ticks: { color: '#64748B', font: { size: 10 } } },
+            x: { grid: { display: false }, ticks: { display: false } }
+        }
+    };
+
+    const trafficChart = new Chart(document.getElementById('trafficChart').getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: Array(40).fill(''),
+            datasets: [
+                {
+                    label: 'Net IN',
+                    data: Array(40).fill(0),
+                    borderColor: '#adc6ff',
+                    backgroundColor: '#adc6ff10',
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4
+                },
+                {
+                    label: 'Net OUT',
+                    data: Array(40).fill(0),
+                    borderColor: '#4edea3',
+                    backgroundColor: '#4edea310',
+                    fill: true,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.4
+                }
+            ]
+        },
+        options: chartOptions
+    });
+
+    let cpuCharts = [];
+    let coresInitialized = false;
+
+    function initCPUCores(cores) {
+        const container = document.getElementById('cpu-cores-container');
+        container.innerHTML = '';
+        cpuCharts = [];
+        
+        cores.forEach((_, i) => {
+            const card = document.createElement('div');
+            card.className = 'p-3 bg-slate-900/50 border border-slate-800 rounded-sm flex flex-col gap-2';
+            card.innerHTML = `
+                <div class="flex justify-between items-center">
+                    <span class="text-[10px] font-mono font-bold text-slate-400">CORE-${i}</span>
+                    <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full" id="core-dot-${i}"></span>
+                </div>
+                <div class="w-full bg-slate-800 h-1 rounded-full overflow-hidden">
+                    <div class="bg-emerald-500 h-full transition-all duration-500" id="core-bar-${i}" style="width: 0%"></div>
+                </div>
+                <div class="flex justify-between text-[9px] font-mono text-slate-500 uppercase">
+                    <span id="core-cpu-${i}">CPU: 0%</span>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        coresInitialized = true;
+    }
+
+    function addLogEntry(data) {
+        const feed = document.getElementById('log-feed');
+        const row = document.createElement('tr');
+        row.className = 'border-b border-slate-800/50 hover:bg-slate-900/50 transition-colors';
+        const timestamp = new Date().toLocaleTimeString();
+        
+        row.innerHTML = `
+            <td class="py-2 px-4 text-slate-500">${timestamp}</td>
+            <td class="py-2 px-4"><span class="text-primary font-bold">GET</span></td>
+            <td class="py-2 px-4 truncate max-w-[200px]">/api/telemetry/stream</td>
+            <td class="py-2 px-4"><span class="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">200</span></td>
+            <td class="py-2 px-4">12ms</td>
+        `;
+        
+        feed.prepend(row);
+        if (feed.children.length > 20) feed.lastElementChild.remove();
+    }
+
+    function connect() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/stats`);
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            if (!coresInitialized && data.cpu_cores) {
+                initCPUCores(data.cpu_cores);
+            }
+
+            // Update KPIs
+            document.getElementById('stat-cpu').innerText = data.cpu_usage.toFixed(1) + '%';
+            document.getElementById('stat-mem').innerText = data.memory_usage.toFixed(1) + '%';
+            document.getElementById('stat-mem-raw').innerText = data.memory_used.toFixed(2) + ' GB';
+            document.getElementById('stat-net').innerText = (data.network_in + data.network_out).toFixed(2);
+
+            // Update Traffic Chart
+            trafficChart.data.datasets[0].data.push(data.network_in);
+            trafficChart.data.datasets[0].data.shift();
+            trafficChart.data.datasets[1].data.push(data.network_out);
+            trafficChart.data.datasets[1].data.shift();
+            trafficChart.update('none');
+
+            // Update Core Heatmap
+            if (data.cpu_cores) {
+                data.cpu_cores.forEach((val, i) => {
+                    const bar = document.getElementById(`core-bar-${i}`);
+                    const text = document.getElementById(`core-cpu-${i}`);
+                    const dot = document.getElementById(`core-dot-${i}`);
+                    
+                    bar.style.width = val + '%';
+                    text.innerText = `CPU: ${val}%`;
+                    
+                    if (val > 80) {
+                        bar.className = 'bg-error h-full transition-all duration-500';
+                        dot.className = 'w-1.5 h-1.5 bg-error rounded-full animate-pulse';
+                    } else if (val > 50) {
+                        bar.className = 'bg-amber-500 h-full transition-all duration-500';
+                        dot.className = 'w-1.5 h-1.5 bg-amber-500 rounded-full';
+                    } else {
+                        bar.className = 'bg-emerald-500 h-full transition-all duration-500';
+                        dot.className = 'w-1.5 h-1.5 bg-emerald-500 rounded-full';
+                    }
+                });
+            }
+
+            // Simulated log entry on each metric tick
+            if (Math.random() > 0.7) addLogEntry();
+        };
+
+        ws.onclose = () => {
+            coresInitialized = false;
+            setTimeout(connect, 3000);
+        };
+    }
+
+    connect();
+</script>
+{% endblock %}

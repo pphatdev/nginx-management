@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Deployment Dashboard</h2>
+        <p class="text-sm font-body text-on-surface-variant">Real-time orchestration and telemetry for global NGINX edge nodes.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="bg-surface-bright hover:bg-slate-700 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline border border-slate-700 flex items-center gap-2 transition-colors" onclick="location.reload()">
+            <span class="material-symbols-outlined text-sm">refresh</span> Refresh Metrics
+        </button>
+        <a href="/import" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">rocket_launch</span> New Deployment
+        </a>
+    </div>
+</div>
+
+<!-- Bento Grid Stats Section -->
+<div class="grid grid-cols-12 gap-4 mb-8">
+    <!-- Health Summary -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-6">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">Instance Health</span>
+            <span class="material-symbols-outlined text-emerald-400">check_circle</span>
+        </div>
+        <div class="flex items-baseline gap-4">
+            <div>
+                <p class="text-4xl font-black text-white font-headline" id="stat-nodes-healthy">0</p>
+                <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-headline">Healthy Nodes</p>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+                <p class="text-4xl font-black text-white font-headline" id="stat-nodes-total">0</p>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-headline">Total Projects</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- CPU Metric -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm relative overflow-hidden">
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">CPU Load</span>
+            <span class="text-emerald-500 font-mono text-[10px] font-bold" id="cpu-trend">Live</span>
+        </div>
+        <p class="text-4xl font-black text-white font-headline mb-4"><span id="stat-cpu">0.0</span> <span class="text-sm font-normal text-slate-500">%</span></p>
+        <div class="flex items-end gap-1 h-12" id="cpu-mini-graph">
+            <!-- Simulated graph bars -->
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[40%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[60%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[45%]"></div>
+            <div class="flex-1 bg-primary/50 rounded-t-sm h-[70%]"></div>
+            <div class="flex-1 bg-primary rounded-t-sm h-[90%]"></div>
+            <div class="flex-1 bg-primary/50 rounded-t-sm h-[65%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[50%]"></div>
+        </div>
+    </div>
+    
+    <!-- Memory Metric -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm">
+        <div class="flex justify-between items-start mb-6">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">Memory Utilization</span>
+            <span class="material-symbols-outlined text-warning">memory</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <p class="text-4xl font-black text-white font-headline" id="stat-mem">0.0 <span class="text-sm font-normal text-slate-500">%</span></p>
+            <div class="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-warning h-full transition-all duration-500" id="mem-bar" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-12 gap-6">
+    <!-- Deployment List Section -->
+    <div class="col-span-12 lg:col-span-8">
+        <div class="bg-surface border border-border-color rounded-sm overflow-hidden">
+            <div class="p-4 border-b border-border-color flex items-center justify-between bg-slate-900/50">
+                <h3 class="text-[11px] font-bold text-white uppercase tracking-widest font-headline">Recent Deployments</h3>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 bg-slate-800 text-[10px] font-bold text-slate-400 rounded-sm cursor-pointer hover:text-white transition-colors">View All</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-slate-800/50">
+                            <th class="px-6 py-3 font-headline">ID</th>
+                            <th class="px-6 py-3 font-headline">Project Name</th>
+                            <th class="px-6 py-3 font-headline">Timestamp</th>
+                            <th class="px-6 py-3 font-headline">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50" id="deployment-list">
+                        <!-- Loading state -->
+                        <tr>
+                            <td colspan="4" class="px-6 py-8 text-center text-slate-500 italic text-xs">Scanning history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Real-time Traffic Overview -->
+    <div class="col-span-12 lg:col-span-4 space-y-6">
+        <div class="bg-surface border border-border-color rounded-sm p-5">
+            <h4 class="text-[11px] font-bold text-white uppercase mb-4 tracking-widest font-headline">Traffic Flow</h4>
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">Network IN</span>
+                        <span class="text-white" id="stat-net-in">0.00 Mb/s</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-primary h-full transition-all" id="net-in-bar" style="width: 10%"></div>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">Network OUT</span>
+                        <span class="text-white" id="stat-net-out">0.00 Mb/s</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full transition-all" id="net-out-bar" style="width: 5%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-black border border-border-color rounded-sm p-4 font-mono">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase">System Uptime</span>
+                <span class="material-symbols-outlined text-xs text-slate-500">schedule</span>
+            </div>
+            <div class="text-[14px] text-white font-bold" id="stat-uptime">00:00:00</div>
+            <div class="mt-4 pt-3 border-t border-slate-800">
+                <button class="w-full py-1.5 border border-emerald-500/30 text-emerald-500 rounded-sm text-[10px] font-bold uppercase hover:bg-emerald-500/10 transition-all" onclick="window.location.href='/monitoring'">
+                    View Cluster Telemetry
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function updateDashboard() {
+        try {
+            // Stats from /api/stats
+            const statsResp = await fetch('/api/stats');
+            const stats = await statsResp.json();
+            
+            document.getElementById('stat-cpu').innerText = stats.cpu_usage.toFixed(1);
+            document.getElementById('stat-mem').innerText = stats.memory_usage.toFixed(1);
+            document.getElementById('mem-bar').style.width = stats.memory_usage + '%';
+            document.getElementById('stat-net-in').innerText = stats.network_in + ' Mb/s';
+            document.getElementById('stat-net-out').innerText = stats.network_out + ' Mb/s';
+            document.getElementById('stat-uptime').innerText = stats.uptime;
+            
+            // Deployments from /api/deployments
+            const deployResp = await fetch('/api/deployments');
+            const deployments = await deployResp.json();
+            
+            const deployList = document.getElementById('deployment-list');
+            deployList.innerHTML = '';
+            
+            if (deployments.length === 0) {
+                deployList.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500 italic text-xs">No recent activity detected</td></tr>';
+            } else {
+                deployments.forEach(d => {
+                    const statusClass = d.status === 'Success' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-primary/10 text-primary border-primary/20 pulse';
+                    deployList.innerHTML += `
+                        <tr class="hover:bg-slate-800/30 group transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm text-slate-500">commit</span>
+                                    <span class="font-mono text-sm text-white">${d.id}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-300 font-bold uppercase">${d.name}</td>
+                            <td class="px-6 py-4 text-[11px] text-slate-500 font-mono">${d.timestamp}</td>
+                            <td class="px-6 py-4">
+                                <span class="${statusClass} border px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase">${d.status}</span>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Project count from /api/projects
+            const projectsResp = await fetch('/api/projects');
+            const projects = await projectsResp.json();
+            document.getElementById('stat-nodes-total').innerText = projects.length;
+            document.getElementById('stat-nodes-healthy').innerText = projects.filter(p => p.active).length;
+
+        } catch (error) {
+            console.error('Error updating dashboard:', error);
+        }
+    }
+
+    updateDashboard();
+    setInterval(updateDashboard, 5000);
+</script>
+{% endblock %}

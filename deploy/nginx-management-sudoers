@@ -15,4 +15,10 @@
 __APP_USER__ ALL=(root) NOPASSWD: \
     __NGINX_BIN__ -t, \
     __NGINX_BIN__ -s reload, \
-    /usr/bin/tee __NGINX_CONF__
+    /usr/bin/tee __NGINX_CONF__, \
+    /usr/bin/cp /tmp/*.conf /etc/nginx/sites-available/, \
+    /usr/bin/ln -sf /etc/nginx/sites-available/*.conf /etc/nginx/sites-enabled/, \
+    /usr/bin/rm -rf /var/www/*, \
+    /usr/bin/certbot *, \
+    /usr/bin/pm2 *, \
+    /usr/bin/tee -a /etc/hosts

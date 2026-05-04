@@ -1,0 +1,25 @@
+# Use an appropriate base image based on {{project_type}}
+FROM {{base_image}}
+
+WORKDIR /app
+
+# Copy dependency files
+COPY package*.json ./
+{{additional_copy_steps}}
+
+# Install dependencies
+RUN {{install_command}}
+
+# Copy project files
+COPY . .
+
+# Build if necessary
+RUN {{build_command}}
+
+EXPOSE {{port}}
+
+# Set environment variables
+ENV PORT={{port}}
+{{environment_vars_docker}}
+
+CMD [{{start_command_array}}]
