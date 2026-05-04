@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Deployment Dashboard</h2>
+        <p class="text-sm font-body text-on-surface-variant">Real-time orchestration and telemetry for global NGINX edge nodes.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="bg-surface-bright hover:bg-slate-700 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline border border-slate-700 flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">refresh</span> Refresh Metrics
+        </button>
+        <button class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">rocket_launch</span> Trigger Global Deploy
+        </button>
+    </div>
+</div>
+
+<!-- Bento Grid Stats Section -->
+<div class="grid grid-cols-12 gap-4 mb-8">
+    <!-- Health Summary -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm flex flex-col justify-between">
+        <div class="flex justify-between items-start mb-6">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">Instance Health</span>
+            <span class="material-symbols-outlined text-emerald-400">check_circle</span>
+        </div>
+        <div class="flex items-baseline gap-4">
+            <div>
+                <p class="text-4xl font-black text-white font-headline" id="stat-nodes-healthy">12</p>
+                <p class="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-headline">Healthy Nodes</p>
+            </div>
+            <div class="h-8 w-px bg-slate-800"></div>
+            <div>
+                <p class="text-4xl font-black text-error font-headline">1</p>
+                <p class="text-[10px] font-bold text-error uppercase tracking-widest font-headline">Critical Alert</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Request Rate Metric -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm relative overflow-hidden">
+        <div class="flex justify-between items-start mb-2">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">Request Rate</span>
+            <span class="text-emerald-500 font-mono text-[10px] font-bold">+12.5%</span>
+        </div>
+        <p class="text-4xl font-black text-white font-headline mb-4"><span id="stat-rps">42.8</span>k <span class="text-sm font-normal text-slate-500">req/s</span></p>
+        <div class="flex items-end gap-1 h-12">
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[40%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[60%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[45%]"></div>
+            <div class="flex-1 bg-primary/50 rounded-t-sm h-[70%]"></div>
+            <div class="flex-1 bg-primary rounded-t-sm h-[90%]"></div>
+            <div class="flex-1 bg-primary/50 rounded-t-sm h-[65%]"></div>
+            <div class="flex-1 bg-slate-800 rounded-t-sm h-[50%]"></div>
+        </div>
+    </div>
+    
+    <!-- Latency Metric -->
+    <div class="col-span-12 lg:col-span-4 bg-surface border border-border-color p-5 rounded-sm">
+        <div class="flex justify-between items-start mb-6">
+            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-widest font-headline">Avg Latency (P99)</span>
+            <span class="material-symbols-outlined text-warning">speed</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <p class="text-4xl font-black text-white font-headline">24 <span class="text-sm font-normal text-slate-500">ms</span></p>
+            <div class="flex-1 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div class="bg-warning w-3/4 h-full"></div>
+            </div>
+        </div>
+        <p class="text-[10px] text-slate-500 mt-2 font-mono uppercase tracking-widest font-bold">Stable against 24h baseline</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-12 gap-6">
+    <!-- Deployment List Section -->
+    <div class="col-span-12 lg:col-span-8">
+        <div class="bg-surface border border-border-color rounded-sm overflow-hidden">
+            <div class="p-4 border-b border-border-color flex items-center justify-between bg-slate-900/50">
+                <h3 class="text-[11px] font-bold text-white uppercase tracking-widest font-headline">Recent Deployments</h3>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 bg-slate-800 text-[10px] font-bold text-slate-400 rounded-sm cursor-pointer hover:text-white transition-colors">All</span>
+                    <span class="px-2 py-1 bg-slate-800 text-[10px] font-bold text-slate-400 rounded-sm cursor-pointer hover:text-white transition-colors">Prod</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-slate-800/50">
+                            <th class="px-6 py-3 font-headline">Deployment ID</th>
+                            <th class="px-6 py-3 font-headline">Target Cluster</th>
+                            <th class="px-6 py-3 font-headline">Timestamp</th>
+                            <th class="px-6 py-3 font-headline">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/50" id="deployment-list">
+                        <!-- Content loaded via JS or template -->
+                        <tr class="hover:bg-slate-800/30 group transition-colors">
+                            <td class="px-6 py-4">
+                                <div class="flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-sm text-slate-500">commit</span>
+                                    <span class="font-mono text-sm text-white">#de9012f</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 text-xs text-slate-300 font-bold uppercase">US-EAST-01</td>
+                            <td class="px-6 py-4 text-[11px] text-slate-500 font-mono">2023-10-24 14:22:10</td>
+                            <td class="px-6 py-4">
+                                <span class="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase">Success</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Real-time Traffic Overview -->
+    <div class="col-span-12 lg:col-span-4 space-y-6">
+        <!-- Traffic Breakdown Card -->
+        <div class="bg-surface border border-border-color rounded-sm p-5">
+            <h4 class="text-[11px] font-bold text-white uppercase mb-4 tracking-widest font-headline">Traffic Origin</h4>
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">North America</span>
+                        <span class="text-white">45%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-primary h-full w-[45%]"></div>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">Europe</span>
+                        <span class="text-white">30%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-blue-400 h-full w-[30%]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Config Status Block -->
+        <div class="bg-black border border-border-color rounded-sm p-4 font-mono">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-[10px] text-emerald-500 font-bold tracking-widest uppercase">Live Config Check</span>
+                <span class="material-symbols-outlined text-xs text-slate-500">lock</span>
+            </div>
+            <div class="text-[12px] text-slate-300 space-y-1">
+                <p><span class="text-primary">nginx</span> -t <span class="text-slate-500"># syntax is ok</span></p>
+                <p><span class="text-primary">worker_processes</span> auto;</p>
+                <p class="text-slate-500">// active upstream: prod_cluster</p>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-800">
+                <button class="w-full py-1.5 border border-primary/30 text-primary rounded-sm text-[10px] font-bold uppercase hover:bg-primary/10 transition-all">
+                    Edit Global Config
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function updateStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            document.getElementById('stat-rps').innerText = (data.requests_per_second / 1000).toFixed(1);
+            // More dynamic updates can go here
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    }
+    updateStats();
+    setInterval(updateStats, 5000);
+</script>
+{% endblock %}

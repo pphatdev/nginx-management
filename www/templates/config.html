@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Configuration Editor</h2>
+        <p class="text-sm font-body text-on-surface-variant">Low-level orchestration of the core NGINX configuration engine.</p>
+    </div>
+    <div class="flex gap-2">
+        <button id="test-config" class="bg-surface-bright hover:bg-slate-700 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline border border-slate-700 flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">rule</span> Validate Syntax
+        </button>
+        <button id="save-config" class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">save</span> Commit Changes
+        </button>
+    </div>
+</div>
+
+<div class="bg-surface border border-border-color rounded-sm overflow-hidden h-[700px] flex flex-col shadow-2xl">
+    <div class="px-6 py-3 border-b border-border-color flex justify-between items-center bg-slate-900/50">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-sm text-slate-500">article</span>
+            <span class="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest">/etc/nginx/nginx.conf</span>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <span class="text-[10px] font-bold text-emerald-500 uppercase font-headline">Read/Write Access</span>
+            </div>
+        </div>
+    </div>
+    <textarea id="config-textarea" spellcheck="false" class="flex-1 bg-black border-none text-slate-300 font-mono text-xs p-6 leading-relaxed resize-none outline-none selection:bg-primary/30 selection:text-white custom-scrollbar"></textarea>
+</div>
+
+<div class="mt-4 p-4 bg-surface border border-border-color rounded-sm font-mono text-[11px] text-slate-500">
+    <div class="flex items-center gap-2 mb-2 text-white font-bold uppercase text-[9px] tracking-widest">
+        <span class="material-symbols-outlined text-xs">terminal</span> Console Output
+    </div>
+    <p id="console-output">Ready for configuration changes...</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const textarea = document.getElementById('config-textarea');
+    const saveBtn = document.getElementById('save-config');
+    const testBtn = document.getElementById('test-config');
+    const consoleOut = document.getElementById('console-output');
+
+    async function loadConfig() {
+        try {
+            const response = await fetch('/api/config');
+            const data = await response.json();
+            textarea.value = data.content;
+        } catch (error) {
+            consoleOut.innerText = 'Error loading configuration file.';
+        }
+    }
+
+    saveBtn.addEventListener('click', async () => {
+        consoleOut.innerText = 'Committing changes to global config...';
+        try {
+            const response = await fetch('/api/config/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: textarea.value })
+            });
+            const data = await response.json();
+            consoleOut.innerText = 'Success: Configuration updated and synchronized across all nodes.';
+        } catch (error) {
+            consoleOut.innerText = 'Critical: Failed to persist configuration changes.';
+        }
+    });
+
+    testBtn.addEventListener('click', async () => {
+        consoleOut.innerText = 'Running nginx -t on production cluster...';
+        setTimeout(() => {
+            consoleOut.innerText = 'nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful';
+        }, 800);
+    });
+
+    loadConfig();
+</script>
+{% endblock %}

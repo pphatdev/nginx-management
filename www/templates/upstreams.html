@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Upstream Pools</h2>
+        <p class="text-sm font-body text-on-surface-variant">Real-time load balancing and backend health telemetry.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline flex items-center gap-2 transition-colors">
+            <span class="material-symbols-outlined text-sm">add_box</span> Create Pool
+        </button>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="upstream-list">
+    <!-- Loading state -->
+    <div class="col-span-full bg-surface border border-border-color p-12 text-center text-slate-500">
+        <span class="material-symbols-outlined animate-spin mb-4 text-3xl">refresh</span>
+        <p class="text-sm font-headline uppercase tracking-widest">Querying backend clusters...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadUpstreams() {
+        try {
+            const response = await fetch('/api/upstreams');
+            const upstreams = await response.json();
+            const list = document.getElementById('upstream-list');
+            list.innerHTML = '';
+            
+            upstreams.forEach(pool => {
+                const card = document.createElement('div');
+                card.className = `bg-surface border border-border-color p-5 rounded-sm flex flex-col justify-between hover:border-primary/50 transition-colors group`;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <h3 class="text-lg font-bold font-headline text-white">${pool.name}</h3>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Load Balancing Pool</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full ${pool.status === 'UP' ? 'bg-emerald-500 pulse' : 'bg-error'}"></div>
+                            <span class="text-[10px] font-bold ${pool.status === 'UP' ? 'text-emerald-500' : 'text-error'} uppercase tracking-widest">${pool.status}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3 mb-6">
+                        <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Target Nodes</p>
+                        <div class="grid grid-cols-1 gap-2">
+                            ${pool.servers.map(s => `
+                                <div class="flex items-center justify-between px-3 py-2 bg-background border border-border-color rounded-sm">
+                                    <span class="font-mono text-[11px] text-slate-300">${s}</span>
+                                    <span class="text-[9px] font-bold text-emerald-500 uppercase tracking-tighter">Healthy</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-border-color flex gap-2">
+                        <button class="flex-1 py-1.5 border border-primary/20 text-primary hover:bg-primary/10 rounded-sm text-[10px] font-bold uppercase transition-all">Node Settings</button>
+                        <button class="px-3 py-1.5 border border-slate-700 text-slate-400 hover:text-white rounded-sm transition-all"><span class="material-symbols-outlined text-sm">settings</span></button>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Error loading upstreams:', error);
+        }
+    }
+    loadUpstreams();
+</script>
+{% endblock %}

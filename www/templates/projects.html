@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">Project Management</h2>
+        <p class="text-sm font-body text-on-surface-variant">Scanning and orchestrating local applications from /var/www.</p>
+    </div>
+    <div class="flex gap-2">
+        <button class="bg-surface-bright hover:bg-slate-700 text-white px-4 py-2 rounded-sm text-xs font-bold font-headline border border-slate-700 flex items-center gap-2 transition-colors" onclick="loadProjects()">
+            <span class="material-symbols-outlined text-sm">refresh</span> Re-scan Directory
+        </button>
+    </div>
+</div>
+
+<div class="bg-surface border border-border-color rounded-sm overflow-hidden">
+    <div class="p-4 border-b border-border-color flex items-center justify-between bg-slate-900/50">
+        <h3 class="text-[11px] font-bold text-white uppercase tracking-widest font-headline">Detected Projects in /var/www</h3>
+        <span class="text-[10px] font-mono text-slate-500 uppercase" id="project-count">0 Projects Found</span>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="text-[10px] text-slate-500 font-bold uppercase border-b border-slate-800/50">
+                    <th class="px-6 py-3 font-headline">Status</th>
+                    <th class="px-6 py-3 font-headline">Project Name</th>
+                    <th class="px-6 py-3 font-headline">Domain</th>
+                    <th class="px-6 py-3 font-headline">Port</th>
+                    <th class="px-6 py-3 font-headline">Languages</th>
+                    <th class="px-6 py-3 font-headline">Last Modified</th>
+                    <th class="px-6 py-3 font-headline text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/50" id="project-list">
+                <!-- Loading state -->
+                <tr>
+                    <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                        <span class="material-symbols-outlined animate-spin mb-2">refresh</span>
+                        <p class="text-xs font-headline">Scanning filesystem...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadProjects() {
+        const list = document.getElementById('project-list');
+        const countLabel = document.getElementById('project-count');
+        
+        try {
+            const response = await fetch('/api/projects');
+            const projects = await response.json();
+            
+            list.innerHTML = '';
+            countLabel.innerText = `${projects.length} Projects Found`;
+            
+            if (projects.length === 0) {
+                list.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                            <p class="text-xs font-headline italic">No directories found in /var/www</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            projects.forEach(project => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-800/30 group transition-colors';
+                
+                let typeBadge = '';
+                switch(project.type) {
+                    case 'Node.js': typeBadge = 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20'; break;
+                    case 'Python': typeBadge = 'text-blue-400 bg-blue-400/10 border-blue-400/20'; break;
+                    case 'Static': typeBadge = 'text-warning bg-warning/10 border-warning/20'; break;
+                    default: typeBadge = 'text-slate-400 bg-slate-800/50 border-slate-700';
+                }
+
+                let statusBadge = '';
+                if (project.deploying) {
+                    statusBadge = `
+                        <span class="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-sm text-[9px] font-bold uppercase flex items-center gap-1.5 w-fit">
+                            <span class="w-1.5 h-1.5 bg-primary rounded-full pulse"></span> In Progress
+                        </span>
+                    `;
+                } else if (project.active) {
+                    statusBadge = '<span class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 rounded-sm text-[9px] font-bold uppercase">Active</span>';
+                } else {
+                    statusBadge = '<span class="px-2 py-0.5 bg-slate-800/50 text-slate-500 border border-slate-800 rounded-sm text-[9px] font-bold uppercase">Inactive</span>';
+                }
+
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        ${statusBadge}
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-primary">folder_open</span>
+                            <span class="text-sm font-bold text-white font-headline">${project.name}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-[10px] font-mono ${project.domain === 'None' ? 'text-slate-600' : 'text-slate-300'}">${project.domain}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-[10px] font-mono ${project.port === 'None' ? 'text-slate-600' : 'text-primary font-bold'}">${project.port}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="px-2 py-0.5 border rounded-sm text-[9px] font-bold uppercase ${typeBadge}">${project.type}</span>
+                    </td>
+                    <td class="px-6 py-4 text-[11px] text-slate-500 font-mono">${project.last_modified}</td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="px-2 py-1 bg-primary text-white text-[9px] font-bold uppercase rounded-sm hover:bg-blue-600 transition-colors" onclick="deployProject('${project.name}')">Config</button>
+                            <button class="p-1 hover:text-white text-slate-500 transition-colors" title="View Logs"><span class="material-symbols-outlined text-base">terminal</span></button>
+                        </div>
+                    </td>
+                `;
+                list.appendChild(tr);
+            });
+        } catch (error) {
+            console.error('Error loading projects:', error);
+            list.innerHTML = `<tr><td colspan="7" class="px-6 py-12 text-center text-error">Failed to load projects</td></tr>`;
+        }
+    }
+
+    function deployProject(name) {
+        window.location.href = `/servers?deploy=${encodeURIComponent(name)}`;
+    }
+
+    loadProjects();
+    // Auto-refresh every 10 seconds to catch deployment changes
+    setInterval(loadProjects, 10000);
+</script>
+{% endblock %}

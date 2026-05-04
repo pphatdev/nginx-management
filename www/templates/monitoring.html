@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="flex items-end justify-between mb-8">
+    <div>
+        <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">System Monitoring</h2>
+        <p class="text-sm font-body text-on-surface-variant">Deep telemetry and resource utilization metrics for the active cluster.</p>
+    </div>
+    <div class="flex gap-2">
+        <div class="flex bg-surface-bright p-1 rounded-sm border border-slate-700">
+            <button class="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white transition-colors uppercase font-headline">Hour</button>
+            <button class="px-3 py-1.5 text-[10px] font-bold bg-primary text-white rounded-sm uppercase font-headline shadow-lg">Day</button>
+            <button class="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white transition-colors uppercase font-headline">Week</button>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-12 gap-6">
+    <div class="col-span-12 lg:col-span-6 bg-surface border border-border-color p-6 rounded-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">CPU Performance Engine</h3>
+            <span class="text-[10px] font-mono text-emerald-500 font-bold">AVG 22.4%</span>
+        </div>
+        <div class="h-[250px]">
+            <canvas id="cpuChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-span-12 lg:col-span-6 bg-surface border border-border-color p-6 rounded-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">Memory Matrix</h3>
+            <span class="text-[10px] font-mono text-primary font-bold">4.2 GB ACTIVE</span>
+        </div>
+        <div class="h-[250px]">
+            <canvas id="memChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-span-12 lg:col-span-8 bg-surface border border-border-color p-6 rounded-sm">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">Network I/O Throughput</h3>
+            <div class="flex gap-4">
+                <span class="text-[10px] font-mono text-blue-400 font-bold">IN: 142 Mb/s</span>
+                <span class="text-[10px] font-mono text-emerald-400 font-bold">OUT: 89 Mb/s</span>
+            </div>
+        </div>
+        <div class="h-[250px]">
+            <canvas id="networkChart"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-span-12 lg:col-span-4 space-y-6">
+        <div class="bg-surface border border-border-color p-5 rounded-sm">
+            <h4 class="text-[11px] font-bold text-white uppercase mb-4 tracking-widest font-headline">Storage Utilization</h4>
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">SSD Pool A</span>
+                        <span class="text-white">68%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-warning h-full w-[68%]"></div>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
+                        <span class="text-slate-400">Log Archive</span>
+                        <span class="text-white">12%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-emerald-500 h-full w-[12%]"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-black border border-border-color p-4 rounded-sm">
+            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-3 tracking-widest font-headline">Kernel Health</h4>
+            <div class="space-y-2 font-mono text-[10px]">
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Uptime</span>
+                    <span class="text-white">142:22:10</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Load Avg</span>
+                    <span class="text-emerald-500">0.45 0.32 0.28</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-400">Temp</span>
+                    <span class="text-warning">42°C</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { beginAtZero: true, grid: { color: '#1E293B', drawBorder: false }, ticks: { color: '#64748B', font: { family: 'Space Grotesk', size: 10 } } },
+            x: { grid: { display: false }, ticks: { color: '#64748B', font: { family: 'Space Grotesk', size: 10 } } }
+        }
+    };
+
+    function createChart(id, label, data, color) {
+        return new Chart(document.getElementById(id).getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                datasets: [{
+                    label: label,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color + '10',
+                    fill: true,
+                    tension: 0.1,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }]
+            },
+            options: chartOptions
+        });
+    }
+
+    createChart('cpuChart', 'CPU %', [10, 15, 45, 30, 20, 25], '#007AFF');
+    createChart('memChart', 'RAM %', [40, 42, 45, 44, 43, 42], '#10B981');
+    createChart('networkChart', 'Mbps', [5, 12, 80, 50, 20, 15], '#38bdf8');
+</script>
+{% endblock %}
