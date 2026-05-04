@@ -5,13 +5,16 @@
 <div class="flex items-end justify-between mb-8">
     <div>
         <h2 class="text-[32px] font-bold font-headline text-white mb-1 leading-tight">System Monitoring</h2>
-        <p class="text-sm font-body text-on-surface-variant">Deep telemetry and resource utilization metrics for the active cluster.</p>
+        <p class="text-sm font-body text-on-surface-variant">Real-time WebSocket telemetry stream from the active
+            cluster nodes.</p>
     </div>
     <div class="flex gap-2">
         <div class="flex bg-surface-bright p-1 rounded-sm border border-slate-700">
-            <button class="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white transition-colors uppercase font-headline">Hour</button>
-            <button class="px-3 py-1.5 text-[10px] font-bold bg-primary text-white rounded-sm uppercase font-headline shadow-lg">Day</button>
-            <button class="px-3 py-1.5 text-[10px] font-bold text-slate-400 hover:text-white transition-colors uppercase font-headline">Week</button>
+            <span
+                class="px-3 py-1.5 text-[10px] font-bold text-emerald-500 uppercase font-headline flex items-center gap-2"
+                id="connection-status">
+                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full pulse"></span> Streaming
+            </span>
         </div>
     </div>
 </div>
@@ -19,76 +22,83 @@
 <div class="grid grid-cols-12 gap-6">
     <div class="col-span-12 lg:col-span-6 bg-surface border border-border-color p-6 rounded-sm">
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">CPU Performance Engine</h3>
-            <span class="text-[10px] font-mono text-emerald-500 font-bold">AVG 22.4%</span>
+            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">CPU Performance</h3>
+            <span class="text-[10px] font-mono text-emerald-500 font-bold" id="cpu-value">0%</span>
         </div>
         <div class="h-[250px]">
             <canvas id="cpuChart"></canvas>
         </div>
     </div>
-    
+
     <div class="col-span-12 lg:col-span-6 bg-surface border border-border-color p-6 rounded-sm">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">Memory Matrix</h3>
-            <span class="text-[10px] font-mono text-primary font-bold">4.2 GB ACTIVE</span>
+            <span class="text-[10px] font-mono text-primary font-bold" id="mem-value">0 GB ACTIVE</span>
         </div>
         <div class="h-[250px]">
             <canvas id="memChart"></canvas>
         </div>
     </div>
-    
+
     <div class="col-span-12 lg:col-span-8 bg-surface border border-border-color p-6 rounded-sm">
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">Network I/O Throughput</h3>
+            <h3 class="text-xs font-bold font-headline uppercase tracking-widest text-white">Network Throughput</h3>
             <div class="flex gap-4">
-                <span class="text-[10px] font-mono text-blue-400 font-bold">IN: 142 Mb/s</span>
-                <span class="text-[10px] font-mono text-emerald-400 font-bold">OUT: 89 Mb/s</span>
+                <span class="text-[10px] font-mono text-blue-400 font-bold" id="net-in-value">IN: 0 Mb/s</span>
+                <span class="text-[10px] font-mono text-emerald-400 font-bold" id="net-out-value">OUT: 0 Mb/s</span>
             </div>
         </div>
         <div class="h-[250px]">
             <canvas id="networkChart"></canvas>
         </div>
     </div>
-    
+
     <div class="col-span-12 lg:col-span-4 space-y-6">
         <div class="bg-surface border border-border-color p-5 rounded-sm">
-            <h4 class="text-[11px] font-bold text-white uppercase mb-4 tracking-widest font-headline">Storage Utilization</h4>
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
-                        <span class="text-slate-400">SSD Pool A</span>
-                        <span class="text-white">68%</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-warning h-full w-[68%]"></div>
-                    </div>
-                </div>
-                <div class="space-y-1">
-                    <div class="flex justify-between text-[11px] font-bold uppercase font-headline mb-1">
-                        <span class="text-slate-400">Log Archive</span>
-                        <span class="text-white">12%</span>
-                    </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div class="bg-emerald-500 h-full w-[12%]"></div>
-                    </div>
-                </div>
+            <div class="flex justify-between items-center mb-4">
+                <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-headline">Service
+                    Availability</h4>
+                <span class="text-[10px] font-mono text-emerald-500 font-bold">99.98%</span>
+            </div>
+            <div class="flex gap-1 h-8 mb-2">
+                <!-- Mock timeline blocks -->
+                <div class="flex-1 bg-emerald-500/80 rounded-sm" title="2023-10-23: Up"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-warning/80 rounded-sm" title="Maintenance window"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+                <div class="flex-1 bg-emerald-500/80 rounded-sm"></div>
+            </div>
+            <div class="flex justify-between text-[8px] text-slate-600 font-bold uppercase font-headline">
+                <span>15 Days Ago</span>
+                <span>Today</span>
             </div>
         </div>
-        
+
         <div class="bg-black border border-border-color p-4 rounded-sm">
-            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-3 tracking-widest font-headline">Kernel Health</h4>
+            <h4 class="text-[10px] font-bold text-slate-500 uppercase mb-3 tracking-widest font-headline">Kernel Health
+            </h4>
             <div class="space-y-2 font-mono text-[10px]">
                 <div class="flex justify-between">
                     <span class="text-slate-400">Uptime</span>
-                    <span class="text-white">142:22:10</span>
+                    <span class="text-white" id="uptime-value">00:00:00</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-slate-400">Load Avg</span>
-                    <span class="text-emerald-500">0.45 0.32 0.28</span>
+                    <span class="text-slate-400">Status</span>
+                    <span class="text-emerald-500">CONNECTED</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-slate-400">Temp</span>
-                    <span class="text-warning">42°C</span>
+                    <span class="text-slate-400">Last Frame</span>
+                    <span class="text-primary" id="last-frame">--:--:--</span>
                 </div>
             </div>
         </div>
@@ -101,35 +111,96 @@
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        animation: {
+            duration: 300,
+            easing: 'linear'
+        },
         plugins: { legend: { display: false } },
         scales: {
-            y: { beginAtZero: true, grid: { color: '#1E293B', drawBorder: false }, ticks: { color: '#64748B', font: { family: 'Space Grotesk', size: 10 } } },
-            x: { grid: { display: false }, ticks: { color: '#64748B', font: { family: 'Space Grotesk', size: 10 } } }
+            y: {
+                beginAtZero: true,
+                grid: { color: '#1E293B', drawBorder: false },
+                ticks: { color: '#64748B', font: { family: 'Space Grotesk', size: 10 } }
+            },
+            x: {
+                grid: { display: false },
+                ticks: { display: false }
+            }
         }
     };
 
-    function createChart(id, label, data, color) {
+    const updateChart = (chart, value) => {
+        if (!chart || !chart.data) return;
+        chart.data.datasets[0].data.push(value);
+        chart.data.datasets[0].data.shift();
+        chart.update('none'); // Reverting to 'none' but using CSS transitions or shorter duration if needed
+    };
+
+    function createChart(id, label, color) {
         return new Chart(document.getElementById(id).getContext('2d'), {
             type: 'line',
             data: {
-                labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                labels: Array(40).fill(''),
                 datasets: [{
                     label: label,
-                    data: data,
+                    data: Array(40).fill(0),
                     borderColor: color,
-                    backgroundColor: color + '10',
+                    backgroundColor: color + '20',
                     fill: true,
-                    tension: 0.1,
                     borderWidth: 2,
-                    pointRadius: 0
+                    pointRadius: 0,
+                    tension: 0.4,
+                    cubicInterpolationMode: 'monotone'
                 }]
             },
             options: chartOptions
         });
     }
 
-    createChart('cpuChart', 'CPU %', [10, 15, 45, 30, 20, 25], '#007AFF');
-    createChart('memChart', 'RAM %', [40, 42, 45, 44, 43, 42], '#10B981');
-    createChart('networkChart', 'Mbps', [5, 12, 80, 50, 20, 15], '#38bdf8');
+    const cpuChart = createChart('cpuChart', 'CPU %', '#007AFF');
+    const memChart = createChart('memChart', 'RAM %', '#10B981');
+    const networkChart = createChart('networkChart', 'Mbps', '#38bdf8');
+
+    function connect() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/ws/stats`);
+        const statusLabel = document.getElementById('connection-status');
+
+        ws.onopen = () => {
+            statusLabel.innerHTML = '<span class="w-1.5 h-1.5 bg-emerald-500 rounded-full pulse"></span> Streaming';
+            statusLabel.classList.remove('text-error');
+            statusLabel.classList.add('text-emerald-500');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            // Update text values
+            document.getElementById('cpu-value').innerText = data.cpu_usage + '%';
+            document.getElementById('mem-value').innerText = data.memory_used.toFixed(2) + ' GB ACTIVE';
+            document.getElementById('net-in-value').innerText = 'IN: ' + data.network_in + ' Mb/s';
+            document.getElementById('net-out-value').innerText = 'OUT: ' + data.network_out + ' Mb/s';
+            document.getElementById('uptime-value').innerText = data.uptime;
+            document.getElementById('last-frame').innerText = data.timestamp;
+
+            updateChart(cpuChart, data.cpu_usage);
+            updateChart(memChart, data.memory_usage);
+            updateChart(networkChart, data.network_in + data.network_out);
+        };
+
+        ws.onclose = () => {
+            statusLabel.innerHTML = '<span class="w-1.5 h-1.5 bg-error rounded-full"></span> Disconnected';
+            statusLabel.classList.remove('text-emerald-500');
+            statusLabel.classList.add('text-error');
+            setTimeout(connect, 3000); // Reconnect after 3s
+        };
+
+        ws.onerror = (err) => {
+            console.error('WebSocket Error:', err);
+            ws.close();
+        };
+    }
+
+    connect();
 </script>
 {% endblock %}

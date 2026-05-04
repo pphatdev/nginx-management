@@ -6,15 +6,41 @@ from datetime import datetime
 
 router = APIRouter()
 
+import psutil
+import time
+
 @router.get("/stats")
 async def get_stats():
-    # Mock stats for now
+    # Real-time system stats
+    cpu_usage = psutil.cpu_percent(interval=None)
+    memory = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    
+    # Network stats (delta)
+    net_1 = psutil.net_io_counters()
+    time.sleep(0.1)
+    net_2 = psutil.net_io_counters()
+    
+    net_in = (net_2.bytes_recv - net_1.bytes_recv) * 8 / 1024 / 1024 / 0.1 # Mbps
+    net_out = (net_2.bytes_sent - net_1.bytes_sent) * 8 / 1024 / 1024 / 0.1 # Mbps
+
+    # Uptime
+    boot_time = datetime.fromtimestamp(psutil.boot_time())
+    uptime = datetime.now() - boot_time
+    
+    # Nginx connections (Mocked or read from stub_status if enabled)
+    # For now, we'll keep a semi-realistic mock for Nginx specific stats
+    # unless we want to parse stub_status
+    
     return {
-        "active_connections": 124,
-        "requests_per_second": 45,
-        "cpu_usage": 12.5,
-        "memory_usage": 45.2,
-        "uptime": "15 days, 4 hours",
+        "cpu_usage": cpu_usage,
+        "memory_usage": memory.percent,
+        "memory_used": memory.used / (1024**3), # GB
+        "memory_total": memory.total / (1024**3), # GB
+        "disk_usage": disk.percent,
+        "network_in": round(net_in, 2),
+        "network_out": round(net_out, 2),
+        "uptime": str(uptime).split('.')[0],
         "status": "Healthy"
     }
 
@@ -108,3 +134,32 @@ async def get_projects():
         raise HTTPException(status_code=500, detail=str(e))
         
     return projects
+
+@router.get("/deployments")
+async def get_deployments():
+    base_path = "/var/www"
+    deployments = []
+    
+    if not os.path.exists(base_path):
+        return []
+
+    try:
+        items = []
+        for item in os.listdir(base_path):
+            full_path = os.path.join(base_path, item)
+            if os.path.isdir(full_path):
+                mtime = os.path.getmtime(full_path)
+                items.append({
+                    "id": f"#{item[:7].replace('-', '')}",
+                    "name": item,
+                    "timestamp": datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                    "raw_time": mtime,
+                    "status": "Success" if (datetime.now().timestamp() - mtime) > 60 else "Deploying"
+                })
+        
+        items.sort(key=lambda x: x['raw_time'], reverse=True)
+        deployments = items[:3]
+    except Exception:
+        pass
+
+    return deployments

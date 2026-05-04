@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from core.routers import api, pages
+from core.routers import api, pages, ws
 import os
 
 app = FastAPI(title="Nginx Management API")
@@ -12,6 +12,7 @@ app.mount("/static", StaticFiles(directory="www/static"), name="static")
 
 # Include routers
 app.include_router(api.router, prefix="/api")
+app.include_router(ws.router)
 app.include_router(pages.router)
 
 if __name__ == "__main__":
