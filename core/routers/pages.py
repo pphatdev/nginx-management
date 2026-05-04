@@ -13,29 +13,8 @@ async def dashboard(request: Request):
         "title": "Dashboard | Nginx Management"
     })
 
-@router.get("/servers", response_class=HTMLResponse)
-async def servers(request: Request):
-    return templates.TemplateResponse("servers.html", {
-        "request": request,
-        "active_page": "servers",
-        "title": "Virtual Hosts | Nginx Management"
-    })
 
-@router.get("/upstreams", response_class=HTMLResponse)
-async def upstreams(request: Request):
-    return templates.TemplateResponse("upstreams.html", {
-        "request": request,
-        "active_page": "upstreams",
-        "title": "Upstreams | Nginx Management"
-    })
 
-@router.get("/config", response_class=HTMLResponse)
-async def config_editor(request: Request):
-    return templates.TemplateResponse("config.html", {
-        "request": request,
-        "active_page": "config",
-        "title": "Config Editor | Nginx Management"
-    })
 
 @router.get("/monitoring", response_class=HTMLResponse)
 async def monitoring(request: Request):

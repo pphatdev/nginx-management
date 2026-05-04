@@ -18,42 +18,13 @@ async def get_stats():
         "status": "Healthy"
     }
 
-@router.get("/servers")
-async def get_servers():
-    # Placeholder for virtual hosts
-    return [
-        {"id": 1, "name": "example.com", "port": 80, "active": True},
-        {"id": 2, "name": "api.example.com", "port": 443, "active": True},
-        {"id": 3, "name": "dev.example.com", "port": 80, "active": False},
-    ]
 
-@router.get("/upstreams")
-async def get_upstreams():
-    # Placeholder for upstreams
-    return [
-        {"name": "backend_pool", "servers": ["10.0.0.1:8000", "10.0.0.2:8000"], "status": "UP"},
-        {"name": "api_pool", "servers": ["10.0.0.3:9000"], "status": "UP"},
-    ]
 
 @router.post("/nginx/reload")
 async def reload_nginx():
     # Placeholder for reload logic
     return {"message": "Nginx reloaded successfully"}
 
-@router.get("/config")
-async def get_config():
-    # In a real app, this would read /etc/nginx/nginx.conf
-    # For now, we'll return a sample or read from the project root if available
-    try:
-        # Try to find a local nginx.conf or return a default
-        return {"content": "user www-data;\nworker_processes auto;\npid /run/nginx.pid;\n\nevents {\n    worker_connections 768;\n}\n\nhttp {\n    sendfile on;\n    tcp_nopush on;\n    types_hash_max_size 2048;\n    include /etc/nginx/mime.types;\n    default_type application/octet-stream;\n\n    server {\n        listen 80;\n        server_name localhost;\n        location / {\n            root /var/www/html;\n        }\n    }\n}"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/config/save")
-async def save_config(config: Dict[str, str]):
-    # Placeholder for saving logic
-    return {"message": "Configuration saved successfully"}
 
 @router.get("/projects")
 async def get_projects():
