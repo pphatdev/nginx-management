@@ -91,12 +91,13 @@ fi
 # ── Install: full first-time setup ───────────────────────────────────────────
 echo "==> Installing system packages..."
 apt-get update -qq
-apt-get install -y -qq python3 python3-pip python3-venv nginx ufw certbot python3-certbot-nginx git curl
+apt-get install -y -qq python3 python3-pip python3-venv nginx ufw certbot python3-certbot-nginx git curl supervisor
 
-echo "==> Installing Node.js and PM2..."
+echo "==> Installing Node.js..."
 curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
 apt-get install -y -qq nodejs
-npm install -g pm2 ts-node
+# PM2 is deprecated in favor of Supervisor
+# npm install -g pm2 ts-node
 
 echo "==> Configuring firewall..."
 ufw allow OpenSSH

@@ -5,6 +5,7 @@ import subprocess
 import os
 import asyncio
 from datetime import datetime
+import json
 
 router = APIRouter()
 
@@ -58,56 +59,76 @@ async def reload_nginx():
 async def get_projects():
     base_path = "/var/www"
     nginx_path = "/etc/nginx/sites-enabled"
+    sup_path = "/etc/supervisor/conf.d"
     projects = []
     
     if not os.path.exists(base_path):
         return []
 
-    # Map project paths to domains/status from Nginx configs
-    active_paths = {} # path -> {"domains": [], "ports": []}
-    if os.path.exists(nginx_path):
-        try:
-            for conf in os.listdir(nginx_path):
-                conf_path = os.path.join(nginx_path, conf)
-                if os.path.isfile(conf_path) or os.path.islink(conf_path):
-                    with open(conf_path, 'r') as f:
-                        content = f.read()
-                        import re
-                        # Extract all paths starting with /var/www
-                        paths_found = re.findall(r'/var/www/[a-zA-Z0-9\-_./]+', content)
-                        domains = re.findall(r'server_name\s+([^;]+);', content)
-                        ports = re.findall(r'listen\s+(\d+);', content)
-                        
-                        for p in paths_found:
-                            # Normalize path to find the base project dir
-                            p_parts = p.split('/')
-                            if len(p_parts) >= 4: # /var/www/projectname
-                                base_project_path = "/".join(p_parts[:4])
-                                if base_project_path not in active_paths:
-                                    active_paths[base_project_path] = {"domains": [], "ports": []}
-                                active_paths[base_project_path]["domains"].extend([d.strip() for d in domains])
-                                active_paths[base_project_path]["ports"].extend([p_strip.strip() for p_strip in ports])
-        except Exception:
-            pass 
+    # Get Supervisor status
+    supervisor_status = {}
+    try:
+        process = await asyncio.create_subprocess_exec(
+            "sudo", "/usr/bin/supervisorctl", "status",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, _ = await process.communicate()
+        if process.returncode == 0:
+            lines = stdout.decode().splitlines()
+            for line in lines:
+                if line.strip():
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        name = parts[0]
+                        status = parts[1]
+                        supervisor_status[name] = status == 'RUNNING'
+    except Exception as e:
+        print(f"Supervisor status check failed: {e}")
 
     try:
         for item in os.listdir(base_path):
             full_path = os.path.join(base_path, item)
-            if os.path.isdir(full_path):
+            if os.path.isdir(full_path) and not item.startswith('.'):
                 stats = os.stat(full_path)
                 
-                config_info = active_paths.get(full_path)
-                if not config_info:
-                    config_info = active_paths.get(os.path.join(full_path, "public"))
-                if not config_info:
-                    config_info = active_paths.get(os.path.join(full_path, "dist"))
+                domain_list = []
+                port_list = []
                 
-                domain_list = config_info["domains"] if config_info else []
-                port_list = config_info["ports"] if config_info else []
+                # 1. Try to get info from Nginx config
+                nginx_conf = os.path.join(nginx_path, f"{item}.conf")
+                if os.path.exists(nginx_conf):
+                    try:
+                        with open(nginx_conf, 'r') as f:
+                            content = f.read()
+                            import re
+                            # Get domains
+                            domains = re.findall(r'server_name\s+([^;]+);', content)
+                            for d in domains:
+                                domain_list.extend([x.strip() for x in d.split() if x.strip()])
+                            
+                            # Get proxy_pass ports
+                            ports = re.findall(r'proxy_pass\s+http://127.0.0.1:(\d+);', content)
+                            port_list.extend(ports)
+                    except: pass
+
+                # 2. Try to get info from Supervisor config
+                sup_conf = os.path.join(sup_path, f"{item}.conf")
+                if os.path.exists(sup_conf):
+                    try:
+                        with open(sup_conf, 'r') as f:
+                            content = f.read()
+                            import re
+                            # Get port from environment
+                            ports = re.findall(r'PORT="(\d+)"', content)
+                            port_list.extend(ports)
+                    except: pass
                 
-                is_active = len(domain_list) > 0 or len(port_list) > 0
-                domain_name = ", ".join(domain_list) if domain_list else "None"
+                domain_name = ", ".join(set(domain_list)) if domain_list else "None"
                 port_name = ", ".join(set(port_list)) if port_list else "None"
+                
+                # Active if either Nginx config exists OR Supervisor process is online
+                is_active = (len(domain_list) > 0 or len(port_list) > 0) or supervisor_status.get(item, False)
                 
                 # Mock 'Deploying' state if modified in the last 30 seconds
                 is_deploying = (datetime.now().timestamp() - stats.st_mtime) < 30
@@ -211,8 +232,10 @@ async def delete_project(name: str):
         raise HTTPException(status_code=404, detail="Project not found")
         
     try:
-        # 1. Cleanup PM2 (if exists)
-        await asyncio.create_subprocess_exec("sudo", "/usr/bin/pm2", "delete", name)
+        # 1. Cleanup Supervisor (if exists)
+        cleanup_sup = f"sudo /usr/bin/rm -f /etc/supervisor/conf.d/{name}.conf && sudo /usr/bin/supervisorctl update"
+        process_sup = await asyncio.create_subprocess_shell(cleanup_sup)
+        await process_sup.wait()
         
         # 2. Cleanup Nginx Configs
         conf_path = f"/etc/nginx/sites-available/{name}.conf"
@@ -234,6 +257,39 @@ async def delete_project(name: str):
         return {"message": f"Project {name} and its configurations deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/projects/{name}/start")
+async def start_project(name: str):
+    target_path = f"/var/www/{name}"
+    if not os.path.exists(target_path):
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Supervisor handles starting via reread/update if config exists
+    # or start command if already known
+    cmd = f"sudo /usr/bin/supervisorctl start {name}"
+    process = await asyncio.create_subprocess_shell(cmd)
+    await process.wait()
+    
+    if process.returncode == 0:
+        return {"message": f"Project {name} started"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to start project")
+
+@router.post("/projects/{name}/stop")
+async def stop_project(name: str):
+    process = await asyncio.create_subprocess_exec("sudo", "/usr/bin/supervisorctl", "stop", name)
+    await process.wait()
+    return {"message": f"Project {name} stopped"}
+
+@router.post("/projects/{name}/restart")
+async def restart_project(name: str):
+    process = await asyncio.create_subprocess_exec("sudo", "/usr/bin/supervisorctl", "restart", name)
+    await process.wait()
+    if process.returncode == 0:
+        return {"message": f"Project {name} restarted"}
+    else:
+        # Try start if restart fails (might not be running)
+        return await start_project(name)
 
 @router.get("/check-port/{port}")
 async def check_port(port: int):

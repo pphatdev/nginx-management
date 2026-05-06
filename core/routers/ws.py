@@ -66,7 +66,7 @@ async def import_streaming(websocket: WebSocket):
         
         # Unique Port Validation & Auto-Discovery
         def find_next_available_port():
-            forbidden_ports = {80, 443, 8080, 8000, 3000, 3306, 5432, 27017, 6379} # Common/Default ports to avoid
+            forbidden_ports = {80, 443, 8080, 8000, 3306, 5432, 27017, 6379} # Common/Default ports to avoid
             used_ports = set()
             
             # 1. Check Nginx configs (listen and proxy_pass)
@@ -166,32 +166,69 @@ async def import_streaming(websocket: WebSocket):
             return p.returncode
 
         if process.returncode == 0:
-            # Write .env file if provided
-            if env_content:
-                await websocket.send_text(json.dumps({"type": "log", "message": "Provisioning environment variables (.env)..."}))
+            await websocket.send_text(json.dumps({"type": "log", "message": "Analyzing project structure..."}))
+            
+            # Framework/Language detection
+            framework = "static"
+            package_json_path = os.path.join(target_path, "package.json")
+            has_package_json = os.path.exists(package_json_path)
+            
+            package_data = {}
+            if has_package_json:
                 try:
-                    with open(os.path.join(target_path, ".env"), 'w') as f:
-                        f.write(env_content)
-                except Exception as e:
-                    await websocket.send_text(json.dumps({"type": "error", "message": f"Failed to write .env: {str(e)}"}))
+                    with open(package_json_path, 'r') as f:
+                        package_data = json.load(f)
+                except: pass
+
+            def has_dep(name):
+                return name in package_data.get("dependencies", {}) or name in package_data.get("devDependencies", {})
+
+            if os.path.exists(os.path.join(target_path, "next.config.js")) or \
+               os.path.exists(os.path.join(target_path, "next.config.mjs")) or \
+               os.path.exists(os.path.join(target_path, "next.config.ts")) or \
+               has_dep("next"):
+                framework = "next"
+            elif os.path.exists(os.path.join(target_path, "nuxt.config.js")) or \
+                 os.path.exists(os.path.join(target_path, "nuxt.config.ts")) or \
+                 has_dep("nuxt"):
+                framework = "nuxt"
+            elif has_package_json:
+                framework = "node"
+            elif os.path.exists(os.path.join(target_path, "requirements.txt")):
+                framework = "python"
+            
+            await websocket.send_text(json.dumps({"type": "log", "message": f"Detected framework: {framework.upper()}"}))
+
+            # 1. .env Provisioning (Flow: Has .env? -> Update Port. No -> Create .env with free port)
+            import re
+            env_file_path = os.path.join(target_path, ".env")
+            current_env_content = ""
+            
+            if os.path.exists(env_file_path):
+                with open(env_file_path, 'r') as f:
+                    current_env_content = f.read()
+                await websocket.send_text(json.dumps({"type": "log", "message": "Existing .env detected, updating PORT..."}))
+            elif env_content:
+                current_env_content = env_content
+                await websocket.send_text(json.dumps({"type": "log", "message": "Using provided environment variables..."}))
+            else:
+                await websocket.send_text(json.dumps({"type": "log", "message": "Creating new .env file..."}))
+
+            if re.search(r'^PORT=', current_env_content, re.MULTILINE):
+                current_env_content = re.sub(r'^PORT=.*', f'PORT={port}', current_env_content, flags=re.MULTILINE)
+            else:
+                if current_env_content and not current_env_content.endswith('\n'):
+                    current_env_content += '\n'
+                current_env_content += f'PORT={port}\n'
+            
+            try:
+                with open(env_file_path, 'w') as f:
+                    f.write(current_env_content)
+            except Exception as e:
+                await websocket.send_text(json.dumps({"type": "error", "message": f"Failed to write .env: {str(e)}"}))
 
             if auto_deploy:
-                await websocket.send_text(json.dumps({"type": "log", "message": "Analyzing project structure..."}))
-                
-                # Framework/Language detection
-                framework = "static"
-                if os.path.exists(os.path.join(target_path, "next.config.js")) or os.path.exists(os.path.join(target_path, "next.config.mjs")):
-                    framework = "next"
-                elif os.path.exists(os.path.join(target_path, "nuxt.config.js")) or os.path.exists(os.path.join(target_path, "nuxt.config.ts")):
-                    framework = "nuxt"
-                elif os.path.exists(os.path.join(target_path, "package.json")):
-                    framework = "node"
-                elif os.path.exists(os.path.join(target_path, "requirements.txt")):
-                    framework = "python"
-                
-                await websocket.send_text(json.dumps({"type": "log", "message": f"Detected framework: {framework.upper()}"}))
-
-                # 1. Dependency Installation
+                # 2. Dependency Installation
                 if framework in ["next", "nuxt", "node"]:
                     await websocket.send_text(json.dumps({"type": "log", "message": "Installing Node.js dependencies (npm install)..."}))
                     if await execute_command("npm install", cwd=target_path) != 0:
@@ -204,38 +241,53 @@ async def import_streaming(websocket: WebSocket):
                         await websocket.send_text(json.dumps({"type": "error", "message": "Python dependency installation failed"}))
                         return
 
-                # 2. Build Step
+                # 3. Build Step
                 if framework in ["next", "nuxt"]:
                     await websocket.send_text(json.dumps({"type": "log", "message": f"Building {framework.upper()} application..."}))
                     if await execute_command("npm run build", cwd=target_path) != 0:
                         await websocket.send_text(json.dumps({"type": "error", "message": "Build failed"}))
                         return
 
-                # 3. Process Management (PM2/Systemd)
+                # 3. Process Management (Supervisor)
                 if framework in ["next", "nuxt", "node"] or start_cmd:
-                    await websocket.send_text(json.dumps({"type": "log", "message": "Provisioning PM2 process manager..."}))
+                    await websocket.send_text(json.dumps({"type": "log", "message": "Provisioning Supervisor process manager..."}))
+                    # Smart Start Command Generation
+                    if not start_cmd:
+                        if framework == "next":
+                            actual_start_cmd = "npm start -- -p {{port}}"
+                        elif framework == "nuxt":
+                            actual_start_cmd = "npm start -- --port {{port}}"
+                        else:
+                            actual_start_cmd = "npm start"
+                    else:
+                        actual_start_cmd = start_cmd
                     
-                    actual_start_cmd = start_cmd.replace("{{port}}", port) if start_cmd else "npm start"
+                    actual_start_cmd = actual_start_cmd.replace("{{port}}", port)
                     
-                    # Load PM2 template
-                    pm2_template_path = "/var/www/nginx-management/configs/pm2/ecosystem.config.json.template"
-                    if os.path.exists(pm2_template_path):
-                        with open(pm2_template_path, 'r') as f:
-                            pm2_config = f.read().replace("{{name}}", name)\
+                    # Load Supervisor template
+                    sup_template_path = "/var/www/nginx-management/configs/supervisor/project.conf.template"
+                    import getpass
+                    current_user = getpass.getuser()
+                    if os.path.exists(sup_template_path):
+                        with open(sup_template_path, 'r') as f:
+                            sup_config = f.read().replace("{{name}}", name)\
                                                .replace("{{start_command}}", actual_start_cmd)\
                                                .replace("{{project_path}}", target_path)\
+                                               .replace("{{user}}", current_user)\
                                                .replace("{{port}}", port)\
-                                               .replace("{{environment_vars_json}}", '"NODE_ENV": "production"')
+                                               .replace("{{environment_vars}}", ',NODE_ENV="production"')
                         
-                        with open(os.path.join(target_path, "ecosystem.config.json"), 'w') as f:
-                            f.write(pm2_config)
+                        temp_sup_conf = f"/tmp/{name}.sup.conf"
+                        with open(temp_sup_conf, 'w') as f:
+                            f.write(sup_config)
                         
-                        await execute_command(f"sudo /usr/bin/pm2 delete {name} || true")
-                        if await execute_command(f"sudo /usr/bin/pm2 start ecosystem.config.json", cwd=target_path) != 0:
-                            await websocket.send_text(json.dumps({"type": "error", "message": "PM2 start failed"}))
+                        deploy_sup_cmd = f"sudo /usr/bin/cp {temp_sup_conf} /etc/supervisor/conf.d/{name}.conf && " \
+                                         f"sudo /usr/bin/supervisorctl reread && " \
+                                         f"sudo /usr/bin/supervisorctl update"
+                        
+                        if await execute_command(deploy_sup_cmd) != 0:
+                            await websocket.send_text(json.dumps({"type": "error", "message": "Supervisor configuration failed"}))
                             return
-                        # Save the process list for auto-restart
-                        await execute_command("sudo /usr/bin/pm2 save")
                 
                 elif framework == "python":
                     await websocket.send_text(json.dumps({"type": "log", "message": "Provisioning Systemd service..."}))
@@ -256,12 +308,13 @@ async def import_streaming(websocket: WebSocket):
                                            .replace("{{port}}", port)\
                                            .replace("{{project_path}}", target_path)
                     
-                    temp_conf = f"/tmp/{name}.conf"
+                    temp_conf = f"/tmp/{name}.nginx.conf"
                     with open(temp_conf, 'w') as f:
                         f.write(config_content)
                     
-                    deploy_cmd = f"sudo /usr/bin/cp /tmp/{name}.conf /etc/nginx/sites-available/ && " \
+                    deploy_cmd = f"sudo /usr/bin/cp /tmp/{name}.nginx.conf /etc/nginx/sites-available/{name}.conf && " \
                                  f"sudo /usr/bin/ln -sf /etc/nginx/sites-available/{name}.conf /etc/nginx/sites-enabled/ && " \
+                                 f"sudo /usr/sbin/nginx -t && " \
                                  f"sudo /usr/sbin/nginx -s reload"
                     
                     if await execute_command(deploy_cmd) == 0:
@@ -277,7 +330,25 @@ async def import_streaming(websocket: WebSocket):
                         if domain:
                             await websocket.send_text(json.dumps({"type": "log", "message": "Provisioning Let's Encrypt SSL..."}))
                             ssl_cmd = f"sudo /usr/bin/certbot --nginx -d {domain} --non-interactive --agree-tos --register-unsafely-without-email --redirect"
-                            await execute_command(ssl_cmd)
+                            if await execute_command(ssl_cmd) == 0:
+                                # Step 5b: Apply custom SSL template if available
+                                ssl_template = f"/var/www/nginx-management/configs/nginx/{framework}.ssl.config"
+                                if not os.path.exists(ssl_template):
+                                    ssl_template = "/var/www/nginx-management/configs/nginx/next.ssl.config" if framework == "next" else None
+                                
+                                if ssl_template and os.path.exists(ssl_template):
+                                    await websocket.send_text(json.dumps({"type": "log", "message": f"Applying custom SSL optimizations ({os.path.basename(ssl_template)})..."}))
+                                    with open(ssl_template, 'r') as f:
+                                        template = f.read()
+                                    config_content = template.replace("{{domain}}", domain).replace("{{port}}", port).replace("{{project_path}}", target_path)
+                                    with open(f"/tmp/{name}.nginx.ssl.conf", 'w') as f:
+                                        f.write(config_content)
+                                    
+                                    final_deploy_cmd = f"sudo /usr/bin/cp /tmp/{name}.nginx.ssl.conf /etc/nginx/sites-available/{name}.conf && " \
+                                                      f"sudo /usr/sbin/nginx -t && " \
+                                                      f"sudo /usr/sbin/nginx -s reload"
+                                    if await execute_command(final_deploy_cmd) != 0:
+                                        await websocket.send_text(json.dumps({"type": "error", "message": "Applying custom SSL template failed, using default certbot config"}))
                         
                         await websocket.send_text(json.dumps({"type": "success", "message": f"Full Stack Deployed Successfully!"}))
                     else:
